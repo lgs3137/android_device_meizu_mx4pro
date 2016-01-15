@@ -161,6 +161,7 @@ enum {
     GRALLOC_USAGE_HW_ION                = 0x02000000,
     GRALLOC_USAGE_YUV_ADDR              = 0x04000000,
     GRALLOC_USAGE_CAMERA                = 0x08000000,
+
     /* SEC Private usage , for Overlay path at HWC */
     GRALLOC_USAGE_HWC_HWOVERLAY         = 0x20000000,
 #endif

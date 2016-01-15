@@ -1,6 +1,9 @@
 # Release name
 PRODUCT_RELEASE_NAME := mx4pro
 
+# Inherit from the common Open Source product configuration
+$(call inherit-product, $(SRC_TARGET_DIR)/product/aosp_base_telephony.mk)
+
 # Inherit some common CM stuff.
 $(call inherit-product, vendor/cm/config/common_full_phone.mk)
 

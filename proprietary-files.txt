@@ -54,7 +54,6 @@ lib/libmarvell-ril.so
 lib/libmtel.so
 lib/libril.so
 lib/libsimal.so
-lib/libstlport.so
 lib/libvcm.so
 vendor/firmware/73BIEB1.img
 vendor/firmware/73BIEBS1.img

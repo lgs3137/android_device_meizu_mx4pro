@@ -39,9 +39,9 @@ WITH_DEXPREOPT_BOOT_IMG_ONLY ?= true
 # BOOT
 TARGET_BOOTLOADER_BOARD_NAME := m76
 
-BOARD_KERNEL_BASE := 0x20008000
+BOARD_KERNEL_BASE := 0x26000000
 BOARD_KERNEL_PAGESIZE := 2048
-#BOARD_KERNEL_CMDLINE := The bootloader ignores the cmdline from the boot.img
+BOARD_KERNEL_CMDLINE := console=ttyFIQ2,115200 vmalloc=512M ess_setup=0x26000000 ramoops_setup reset_reason_setup noexec=on earlyprintk no_console_suspend
 #BOARD_KERNEL_SEPARATED_DT := true
 # Extracted with libbootimg
 BOARD_MKBOOTIMG_ARGS := --ramdisk_offset 0x26000000 --tags_offset 0x00000100 --dt device/meizu/mx4pro/dtb.img
@@ -70,13 +70,13 @@ TARGET_SPECIFIC_HEADER_PATH := $(LOCAL_PATH)/include
 USE_OPENGL_RENDERER := true
 # hwcomposer insignal
 BOARD_HDMI_INCAPABLE := true
+
+BOARD_USE_NON_CACHED_GRAPHICBUFFER := true
 # frameworks/native/services/surfaceflinger
 # Android keeps 2 surface buffers at all time in case the hwcomposer
 # misses the time to swap buffers (in cases where it takes 16ms or
 # less). Use 3 to avoid timing issues.
 NUM_FRAMEBUFFER_SURFACE_BUFFERS := 3
-# frameworks/native/libs/ui/GraphicBuffer.cpp
-BOARD_EGL_NEEDS_HANDLE_VALUE := true
 
 # GSC
 BOARD_USES_ONLY_GSC0_GSC1 := true
@@ -96,6 +96,11 @@ BOARD_USE_S3D_SUPPORT := true
 # HEVC support in libvideocodec
 BOARD_USE_HEVC_HWIP := true
 
+BOARD_USES_TRUST_KEYMASTER := true
+BOARD_USE_CSC_HW := true
+BOARD_USES_SKIA_FIMGAPI := true
+BOARD_USES_HWC_SERVICES := true
+BOARD_USES_VIRTUAL_DISPLAY := true
 BOARD_USE_GSC_RGB_ENCODER := true
 BOARD_USE_ENCODER_RGBINPUT_SUPPORT := true
 
@@ -124,7 +129,6 @@ BOARD_BLUETOOTH_BDROID_BUILDCFG_INCLUDE_DIR := $(LOCAL_PATH)/bluetooth
 
 ### NFC
 BOARD_NFC_CHIPSET := PN547C2
-BOARD_NFC_HAL_SUFFIX := $(TARGET_BOOTLOADER_BOARD_NAME)
 
 ### CAMERA
 # frameworks/av/services/camera/libcameraservice
@@ -137,14 +141,11 @@ BOARD_USES_DT_SHORTNAME := true
 COMMON_GLOBAL_CFLAGS += -DSAMSUNG_CAMERA_HARDWARE
 # frameworks/av/media/libstagefright, for libwvm.so
 COMMON_GLOBAL_CFLAGS += -DADD_LEGACY_ACQUIRE_BUFFER_SYMBOL
-# device specific gralloc header
-COMMON_GLOBAL_CFLAGS += -DEXYNOS5_ENHANCEMENTS
-# frameworks/av/media/libstagefright
-COMMON_GLOBAL_CFLAGS += -DUSE_NATIVE_SEC_NV12TILED
 BOARD_USE_SAMSUNG_CAMERAFORMAT_NV21 := true
 
 # frameworks/native/libs/binder/Parcel.cpp
 COMMON_GLOBAL_CFLAGS += -DDISABLE_ASHMEM_TRACKING
+
 ### SENSORS
 TARGET_NO_SENSOR_PERMISSION_CHECK := true
 
@@ -155,19 +156,12 @@ EXTENDED_FONT_FOOTPRINT := true
 ENABLE_WEBGL := true
 
 ###########################################################
-### CYANOGEN RECOVERY
-###########################################################
-TARGET_RECOVERY_FSTAB := $(LOCAL_PATH)/ramdisk/fstab.m76
-BOARD_HAS_DOWNLOAD_MODE := true
-
-###########################################################
 ### TWRP RECOVERY
 ###########################################################
 TW_BUILD_ZH_CN_SUPPORT := true
 TW_USE_TOOLBOX := true
-TARGET_RECOVERY_FSTAB := $(LOCAL_PATH)/twrp.fstab
+TARGET_RECOVERY_FSTAB := $(LOCAL_PATH)/configs/script/recovery.fstab
 DEVICE_RESOLUTION := 1440x2560
-TARGET_RECOVERY_PIXEL_FORMAT := "BRGA_8888"
 TW_ALWAYS_RMRF := true
 TW_HAS_NO_BOOT_PARTITION := true
 TW_HAS_NO_RECOVERY_PARTITION := true
@@ -177,3 +171,6 @@ TW_NO_REBOOT_BOOTLOADER := true
 
 # The kernel has exfat support.
 TW_NO_EXFAT_FUSE := true
+
+# Releasetools
+TARGET_RELEASETOOLS_EXTENSIONS := $(LOCAL_PATH)/configs/script

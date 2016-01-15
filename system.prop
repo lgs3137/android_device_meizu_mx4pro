@@ -2,8 +2,6 @@
 # system.prop for mx4pro
 #
 
-ro.sf.lcd_density=640
-
 #
 # HWC
 #

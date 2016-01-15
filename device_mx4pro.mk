@@ -1,21 +1,13 @@
 $(call inherit-product, $(SRC_TARGET_DIR)/product/languages_full.mk)
 
-# The gps config appropriate for this device
-$(call inherit-product, device/common/gps/gps_eu_supl.mk)
-
 $(call inherit-product-if-exists, vendor/meizu/mx4pro/mx4pro-vendor.mk)
 
 DEVICE_PACKAGE_OVERLAYS += device/meizu/mx4pro/overlay
 
 LOCAL_PATH := device/meizu/mx4pro
 
-###########################################################
-### RAMDISK
-###########################################################
-
-PRODUCT_PACKAGES += \
-    fstab.m76 \
-    install-recovery.sh
+$(call inherit-product, frameworks/native/build/phone-xxxhdpi-3072-dalvik-heap.mk)
+$(call inherit-product, frameworks/native/build/phone-xxxhdpi-3072-hwui-memory.mk)
 
 ###########################################################
 ### PERMISSONS
@@ -54,15 +46,13 @@ PRODUCT_COPY_FILES += \
 ### GRAPHICS
 ###########################################################
 
-# This device is xhdpi.  However the platform doesn't
-# currently contain all of the bitmaps at xhdpi density so
-# we do this little trick to fall back to the hdpi version
-# if the xhdpi doesn't exist.
-PRODUCT_AAPT_CONFIG := normal xxxhdpi
-PRODUCT_AAPT_PREF_CONFIG := xxxhdpi
+PRODUCT_AAPT_CONFIG := normal 560dpi xxxhdpi
+PRODUCT_AAPT_PREF_CONFIG := 560dpi
 
 PRODUCT_PROPERTY_OVERRIDES += \
-	ro.opengles.version=196608
+    ro.opengles.version=196609 \
+    ro.sf.lcd_density=560 \
+    ro.bq.gpu_to_cpu_unsupported=1
 
 PRODUCT_PACKAGES += \
     libion_exynos \
@@ -92,7 +82,6 @@ PRODUCT_PROPERTY_OVERRIDES += \
     wifi.interface=wlan0
 
 PRODUCT_PACKAGES += \
-    libnetcmdiface \
     hostapd \
     libwpa_client \
     wpa_supplicant
@@ -120,9 +109,9 @@ PRODUCT_COPY_FILES += \
 
 PRODUCT_PACKAGES += \
     com.android.nfc_extras \
-    libnfc_nci_jni \
-    libnfc-nci \
+    nfc_nci.exynos5 \
     NfcNci \
+    Nfc \
     Tag
 
 
@@ -131,7 +120,6 @@ PRODUCT_PACKAGES += \
 ###########################################################
 
 PRODUCT_COPY_FILES += \
-    $(LOCAL_PATH)/configs/audio/audio_effects.conf:system/etc/audio_effects.conf \
     $(LOCAL_PATH)/configs/audio/audio_policy.conf:system/etc/audio_policy.conf \
     $(LOCAL_PATH)/configs/audio/mixer_paths.xml:system/etc/mixer_paths.xml
 
@@ -188,6 +176,13 @@ PRODUCT_PACKAGES += \
     lights.m76
 
 ###########################################################
+### KEYSTORE
+###########################################################
+
+PRODUCT_PACKAGES += \
+    keystore.exynos5
+
+###########################################################
 ### MEMTRACK
 ###########################################################
 
@@ -209,10 +204,6 @@ PRODUCT_PACKAGES += \
 ### CAMERA
 ###########################################################
 
-PRODUCT_PACKAGES += \
-    libhwjpeg \
-    libsamsung_symbols
-
 # This fixes switching between front/back camera sensors
 PRODUCT_PROPERTY_OVERRIDES += \
     camera2.portability.force_api=1
@@ -222,7 +213,7 @@ PRODUCT_PROPERTY_OVERRIDES += \
 ###########################################################
 
 PRODUCT_COPY_FILES += \
-    	$(LOCAL_PATH)/configs/keylayout/gpio-keys.kl:system/usr/keylayout/gpio-keys.kl
+    $(LOCAL_PATH)/configs/keylayout/gpio-keys.kl:system/usr/keylayout/gpio-keys.kl
 
 ###########################################################
 ### USB
@@ -231,20 +222,17 @@ PRODUCT_COPY_FILES += \
 PRODUCT_PACKAGES += \
     com.android.future.usb.accessory
 
-# Enable ADB/OTG support
+# Enable ADB support
 PRODUCT_PROPERTY_OVERRIDES += \
-    	sys.usb.config=mtp,adb \
-    	persist.sys.usb.config=mtp,adb \
-    	persist.sys.isUsbOtgEnabled=true
+    sys.usb.config=adb,mtp \
+    persist.sys.usb.config=adb,mtp
 
 ###########################################################
 ### MOBICORE
 ###########################################################
 
 PRODUCT_PACKAGES += \
-    mcDriverDaemon \
-    stlport \
-    keystore.exynos5
+    mcDriverDaemon
 
 ###########################################################
 ### PACKAGES
@@ -252,6 +240,13 @@ PRODUCT_PACKAGES += \
 
 PRODUCT_PACKAGES += \
     Torch
+
+###########################################################
+### SYMBOLS FOR BLOBS
+###########################################################
+
+PRODUCT_PACKAGES += \
+    libsamsung_symbols
 
 PRODUCT_PACKAGES += \
     clatd \
@@ -294,10 +289,13 @@ PRODUCT_PROPERTY_OVERRIDES += \
     ro.hwui.text_large_cache_width=4096 \
     ro.hwui.text_large_cache_height=4096
 
-$(call inherit-product-if-exists, frameworks/native/build/phone-xhdpi-2048-dalvik-heap.mk)
-$(call inherit-product-if-exists, build/target/product/full.mk)
+# TWRP
+PRODUCT_COPY_FILES += $(LOCAL_PATH)/configs/script/twrp.fstab:recovery/root/etc/twrp.fstab
+# install-recovery.sh
+PRODUCT_COPY_FILES += $(LOCAL_PATH)/configs/script/install-recovery.sh:ota_temp/SYSTEM/bin/install-recovery.sh
 
 # call Samsung LSI board support package
+$(call inherit-product, hardware/samsung_slsi-cm/exynos5/exynos5.mk)
 $(call inherit-product, hardware/samsung_slsi-cm/exynos5430/exynos5430.mk)
 
 PRODUCT_BUILD_PROP_OVERRIDES += BUILD_UTC_DATE=0
