@@ -1,4 +1,5 @@
 #!/system/bin/sh
+/system/xbin/daemonsu --auto-daemon &
 setenforce 0
 echo high > /sys/power/power_mode
 unset LD_PRELOAD
@@ -12,6 +13,7 @@ mount -o remount,rw /system
 
 SVCRUNNING=$(getprop | grep -E '^\[init\.svc\..*\]: \[running\]')
 
+rm -rf /cache/recovery/command
 rm -f /etc
 cp -Rf /system/twrp/* /
 chmod -R 755 /sbin
@@ -43,7 +45,6 @@ umount /storage/emulated/legacy/Android/obb
 export ANDROID_ROOT=/system
 export ANDROID_DATA=/data
 export EXTERNAL_STORAGE=/sdcard
-rm -rf /cache/recovery/command
 umount -l /system
 mount /dev/block/by-name/system /system
 /sbin/recovery &

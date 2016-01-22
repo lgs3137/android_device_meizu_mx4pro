@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2016 The CyanogenMod Project
+# Copyright (C) 2014 The CyanogenMod Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,5 +17,10 @@
 LOCAL_PATH := $(call my-dir)
 
 ifneq ($(filter mx4pro, $(TARGET_DEVICE)),)
-include $(call all-subdir-makefiles,$(LOCAL_PATH))
+
+$(shell mkdir -p out/target/product/$(TARGET_DEVICE)/obj/KERNEL_OBJ/drivers/net/wireless/bcmdhd)
+$(shell mkdir -p out/target/product/$(TARGET_DEVICE)/obj/KERNEL_OBJ/drivers/media/platform/exynos/fimc-is/sensor)
+
+include $(call all-makefiles-under,$(LOCAL_PATH))
+
 endif

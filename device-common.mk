@@ -1,7 +1,3 @@
-$(call inherit-product, $(SRC_TARGET_DIR)/product/languages_full.mk)
-
-$(call inherit-product-if-exists, vendor/meizu/mx4pro/mx4pro-vendor.mk)
-
 DEVICE_PACKAGE_OVERLAYS += device/meizu/mx4pro/overlay
 
 LOCAL_PATH := device/meizu/mx4pro
@@ -46,15 +42,16 @@ PRODUCT_COPY_FILES += \
 ### GRAPHICS
 ###########################################################
 
-PRODUCT_AAPT_CONFIG := normal 560dpi xxxhdpi
-PRODUCT_AAPT_PREF_CONFIG := 560dpi
+PRODUCT_AAPT_CONFIG := normal xxxhdpi
+PRODUCT_AAPT_PREF_CONFIG := 640dpi
 
 PRODUCT_PROPERTY_OVERRIDES += \
     ro.opengles.version=196609 \
-    ro.sf.lcd_density=560 \
+    ro.sf.lcd_density=640 \
     ro.bq.gpu_to_cpu_unsupported=1
 
 PRODUCT_PACKAGES += \
+    libion \
     libion_exynos \
     gralloc.exynos5 \
     hwcomposer.exynos5
@@ -66,12 +63,16 @@ PRODUCT_PACKAGES += \
 ### RADIO
 ###########################################################
 
+PRODUCT_PACKAGES += \
+    libshim_ril \
+    libshim_icu53
+
 PRODUCT_PROPERTY_OVERRIDES += \
     rild.libpath=/system/lib/libmarvell-ril.so
-    
+
 # LTE, CDMA, GSM/WCDMA
 PRODUCT_PROPERTY_OVERRIDES += \
-    ro.telephony.default_network=10 \
+    ro.telephony.default_network=21 \
     telephony.lteOnCdmaDevice=1
 
 ###########################################################
@@ -109,9 +110,7 @@ PRODUCT_COPY_FILES += \
 
 PRODUCT_PACKAGES += \
     com.android.nfc_extras \
-    nfc_nci.exynos5 \
     NfcNci \
-    Nfc \
     Tag
 
 
@@ -127,9 +126,7 @@ PRODUCT_PACKAGES += \
     audio.a2dp.default \
     audio.usb.default \
     audio.r_submix.default \
-    audio.primary.m76 \
-    tinyplay \
-    tinymix
+    audio.primary.m76
 
 PRODUCT_PROPERTY_OVERRIDES += \
     ro.config.vc_call_vol_steps=15
@@ -138,6 +135,13 @@ PRODUCT_PROPERTY_OVERRIDES += \
 ### OMX/MEDIA
 ###########################################################
 
+PRODUCT_COPY_FILES += \
+    frameworks/av/media/libstagefright/data/media_codecs_google_audio.xml:system/etc/media_codecs_google_audio.xml \
+    frameworks/av/media/libstagefright/data/media_codecs_google_telephony.xml:system/etc/media_codecs_google_telephony.xml \
+    frameworks/av/media/libstagefright/data/media_codecs_google_video.xml:system/etc/media_codecs_google_video.xml  \
+    $(LOCAL_PATH)/configs/media/media_codecs.xml:system/etc/media_codecs.xml \
+    $(LOCAL_PATH)/configs/media/media_profiles.xml:system/etc/media_profiles.xml
+
 # Stagefright and device specific modules
 PRODUCT_PACKAGES += \
     libstagefrighthw \
@@ -145,28 +149,13 @@ PRODUCT_PACKAGES += \
 
 # Video codecs
 PRODUCT_PACKAGES += \
+    libOMX.Exynos.AVC.Encoder \
     libOMX.Exynos.AVC.Decoder \
     libOMX.Exynos.HEVC.Decoder \
     libOMX.Exynos.MPEG4.Decoder \
+    libOMX.Exynos.MPEG4.Encoder \
     libOMX.Exynos.VP8.Decoder \
     libOMX.Exynos.WMV.Decoder
-
-PRODUCT_PACKAGES += \
-    libOMX.Exynos.AVC.Encoder \
-    libOMX.Exynos.MPEG4.Encoder \
-    libOMX.Exynos.VP8.Encoder
-
-PRODUCT_PACKAGES += \
-    libOMX.Exynos.AAC.Decoder \
-    libOMX.Exynos.MP3.Decoder \
-    libOMX.Exynos.FLAC.Decoder
-
-PRODUCT_COPY_FILES += \
-    frameworks/av/media/libstagefright/data/media_codecs_google_audio.xml:system/etc/media_codecs_google_audio.xml \
-    frameworks/av/media/libstagefright/data/media_codecs_google_telephony.xml:system/etc/media_codecs_google_telephony.xml \
-    frameworks/av/media/libstagefright/data/media_codecs_google_video.xml:system/etc/media_codecs_google_video.xml \
-    $(LOCAL_PATH)/configs/media/media_codecs.xml:system/etc/media_codecs.xml \
-    $(LOCAL_PATH)/configs/media/media_profiles.xml:system/etc/media_profiles.xml
 
 ###########################################################
 ### LIGHTS
@@ -180,6 +169,7 @@ PRODUCT_PACKAGES += \
 ###########################################################
 
 PRODUCT_PACKAGES += \
+    libhwjpeg \
     keystore.exynos5
 
 ###########################################################
@@ -198,11 +188,15 @@ PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/configs/gps/gpsconfig.xml:system/etc/gpsconfig.xml
 
 PRODUCT_PACKAGES += \
-    libdmitry
+    libshim_gps
 
 ###########################################################
 ### CAMERA
 ###########################################################
+
+PRODUCT_PACKAGES += \
+    libshim_camera \
+    Snap
 
 # This fixes switching between front/back camera sensors
 PRODUCT_PROPERTY_OVERRIDES += \
@@ -221,11 +215,6 @@ PRODUCT_COPY_FILES += \
 
 PRODUCT_PACKAGES += \
     com.android.future.usb.accessory
-
-# Enable ADB support
-PRODUCT_PROPERTY_OVERRIDES += \
-    sys.usb.config=adb,mtp \
-    persist.sys.usb.config=adb,mtp
 
 ###########################################################
 ### MOBICORE
@@ -246,19 +235,8 @@ PRODUCT_PACKAGES += \
 ###########################################################
 
 PRODUCT_PACKAGES += \
-    libsamsung_symbols
-
-PRODUCT_PACKAGES += \
     clatd \
     clatd.conf
-
-###########################################################
-### DEFAULT PROPS
-###########################################################
-
-ADDITIONAL_DEFAULT_PROPERTIES += \
-    ro.debug_level=0x4948 \
-    ro.secure=0
 
 ###########################################################
 ### DALVIK/ART
@@ -289,15 +267,27 @@ PRODUCT_PROPERTY_OVERRIDES += \
     ro.hwui.text_large_cache_width=4096 \
     ro.hwui.text_large_cache_height=4096
 
-# TWRP
+###########################################################
+### BUILD.PROP
+###########################################################
+
+PRODUCT_PROPERTY_OVERRIDES += \
+    persist.demo.hdmirotationlock=false \
+    persist.hdmi.hdcp_enabled=0 \
+    persist.sys.strictmode.disable=true \
+    persist.sys.ui.hw=true \
+    af.fast_track_multiplier=1 \
+    audio_hal.force_wideband=true \
+    ro.sys.fw.dex2oat_thread_count=4 \
+    debug.hwc.winupdate=1 \
+    debug.hwc.otf=1
+
+# recovery
 PRODUCT_COPY_FILES += $(LOCAL_PATH)/configs/script/twrp.fstab:recovery/root/etc/twrp.fstab
-# install-recovery.sh
-PRODUCT_COPY_FILES += $(LOCAL_PATH)/configs/script/install-recovery.sh:ota_temp/SYSTEM/bin/install-recovery.sh
 
 # call Samsung LSI board support package
 $(call inherit-product, hardware/samsung_slsi-cm/exynos5/exynos5.mk)
 $(call inherit-product, hardware/samsung_slsi-cm/exynos5430/exynos5430.mk)
 
-PRODUCT_BUILD_PROP_OVERRIDES += BUILD_UTC_DATE=0
-PRODUCT_NAME := full_mx4pro
-PRODUCT_DEVICE := mx4pro
+# call the proprietary setup
+$(call inherit-product-if-exists, vendor/meizu/mx4pro/device-vendor.mk)

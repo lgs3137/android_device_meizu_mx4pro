@@ -1,6 +1,6 @@
 # Android fstab file.
 
-/system	ext4	/dev/block/platform/15540000.dwmmc0/by-name/system	flags=fsflags="rw"
+/system	ext4	/dev/block/platform/15540000.dwmmc0/by-name/system
 /cache	ext4	/dev/block/platform/15540000.dwmmc0/by-name/cache
 /data	ext4	/dev/block/platform/15540000.dwmmc0/by-name/userdata
 #/misc	emmc	/dev/block/platform/15540000.dwmmc0/by-name/rec_priv

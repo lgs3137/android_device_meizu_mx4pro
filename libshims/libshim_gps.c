@@ -1,4 +1,4 @@
-#define LOG_TAG "libdmitry"
+#define LOG_TAG "libshim_gps"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -34,7 +34,7 @@
  *    which we'll create. Need a library name? why not "lidmitry"?
  * 2. Make sure that lidmitry's NEED records include the library whose record we replaced in the GPS
  *    library, to make sure that the linker brings it in afterall and all symbols in it are found
- * 3. Implement libdmitry such that it provides the missing things and does them in such a way that the
+ * 3. Implement libshim_gps such that it provides the missing things and does them in such a way that the
  *    GPS library is happy.
  * 4. Complications exist:
  *   a. This would be impossible to do in C++, as the compiler would barf at us implementing random
@@ -50,8 +50,8 @@
  *   c. Some cleanup may be needed on exit. Luckily, there is a way to register functions to be called
  *      upon library load and unload. I use that here to free some state that may be left over on exit.
  *
- * Result: GPS library works on M, with the help of libdmitry and a small binary patch to the GPS
- *         library itself (replacing one of the "NEED" records with a NEED record for "libdmitry"
+ * Result: GPS library works on M, with the help of libshim_gps and a small binary patch to the GPS
+ *         library itself (replacing one of the "NEED" records with a NEED record for "libshim_gps"
  */
 
 //various funcs we'll need to call, in their mangled form
@@ -184,7 +184,7 @@ void *CRYPTO_malloc(uint32_t sz, const char *file, uint32_t line)
  */
 void libEvtLoading(void)
 {
-    ALOGI("Samsung GPS interposition library loaded. Your GPS should work in M now.");
+    ALOGI("mx4pro GPS interposition library loaded. Your GPS should work in M now.");
 }
 
 /*
@@ -194,7 +194,7 @@ void libEvtLoading(void)
  */
 void libEvtUnloading(void)
 {
-    ALOGI("Samsung GPS interposition library unloading. Goodbye...");
+    ALOGI("mx4pro GPS interposition library unloading. Goodbye...");
     if (_ZN7android9SingletonINS_13SensorManagerEE9sInstanceE) {
         //if an instance stil exists, free it by calling the destructor, just to be throrough
         _ZN7android13SensorManagerD1Ev(_ZN7android9SingletonINS_13SensorManagerEE9sInstanceE);

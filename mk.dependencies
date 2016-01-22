@@ -1,5 +1,5 @@
 [
-{
+    {
         "repository": "android_external_stlport",
         "target_path": "external/stlport"
     },
@@ -12,12 +12,12 @@
         "target_path": "hardware/samsung_slsi-cm/exynos5"
     },
     {
-        "repository": "android_hardware_samsung_slsi-cm_openmax",
-        "target_path": "hardware/samsung_slsi-cm/openmax"
-    },
-    {
         "repository": "android_hardware_samsung_slsi-cm_exynos5430",
         "target_path": "hardware/samsung_slsi-cm/exynos5430"
+    },
+    {
+        "repository": "android_hardware_samsung_slsi-cm_openmax",
+        "target_path": "hardware/samsung_slsi-cm/openmax"
     },
     {
         "repository": "android_kernel_meizu_mx4pro",
