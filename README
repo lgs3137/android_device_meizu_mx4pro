@@ -3,4 +3,22 @@ Device configuration for the Meizu MX4Pro
 WORK IN PROGRESS.
 
 now boots!
+
+ROM and TWRP.apk download:
+http://pan.baidu.com/share/home?uk=1446330619
 -------------------------------------------------------
+What is working?
+Data & WiFi
+SMS
+Phone
+NFC
+Sensors
+Audio
+Bluetooth
+Home button (including mBack)
+GPS
+
+Bugs:
+Camera
+Fingerprint
+Others...

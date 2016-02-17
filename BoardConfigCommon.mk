@@ -4,8 +4,6 @@ TARGET_ARCH := arm
 TARGET_NO_BOOTLOADER := true
 TARGET_NO_RADIOIMAGE := true
 
-USE_CLANG_PLATFORM_BUILD := true
-
 # Platform
 TARGET_BOARD_PLATFORM := exynos5
 TARGET_SLSI_VARIANT := cm
@@ -16,6 +14,11 @@ TARGET_CPU_ABI := armeabi-v7a
 TARGET_CPU_ABI2 := armeabi
 TARGET_ARCH_VARIANT := armv7-a-neon
 TARGET_CPU_VARIANT := cortex-a15
+TARGET_CPU_SMP := true
+ARCH_ARM_HAVE_TLS_REGISTER := true
+
+# RENDERSCRIPT
+BOARD_OVERRIDE_RS_CPU_VARIANT_32 := cortex-a15
 
 # Enable dex-preoptimization to speed up first boot sequence
 ifeq ($(HOST_OS),linux)
@@ -65,9 +68,6 @@ BOARD_FRONT_CAMERA_SENSOR := SENSOR_NAME_OV5693
 
 # Graphics
 USE_OPENGL_RENDERER := true
-
-# Renderscript
-BOARD_OVERRIDE_RS_CPU_VARIANT_32 := cortex-a15
 
 # frameworks/native/services/surfaceflinger
 # Android keeps 2 surface buffers at all time in case the hwcomposer
