@@ -73,21 +73,35 @@ enum
 struct pcm_config pcm_config_out = {
     .channels = 2,
     .rate = 48000,
-    .period_size = 256,
+    .period_size = 240,
     .period_count = 2,
     .format = PCM_FORMAT_S16_LE,
 };
 struct pcm_config pcm_config_in = {
     .channels = 2,
     .rate = 48000,
-    .period_size = 256,
+    .period_size = 640,
+    .period_count = 2,
+    .format = PCM_FORMAT_S16_LE,
+};
+struct pcm_config pcm_config_backend = {
+    .channels = 2,
+    .rate = 48000,
+    .period_size = 320,
+    .period_count = 2,
+    .format = PCM_FORMAT_S16_LE,
+};
+struct pcm_config pcm_config_call = {
+    .channels = 2,
+    .rate = 48000,
+    .period_size = 320,
     .period_count = 2,
     .format = PCM_FORMAT_S16_LE,
 };
 struct pcm_config pcm_config_sco = {
     .channels = 1,
     .rate = 8000,
-    .period_size = 128,
+    .period_size = 120,
     .period_count = 2,
     .format = PCM_FORMAT_S16_LE,
 };
@@ -113,105 +127,82 @@ enum
     IN_SOURCE_NONE,
     IN_SOURCE_CNT
 };
-#define BACKEND_CODEC_MEDIA (1 << PCM_DEVICE_CODEC_MEDIA)
-#define PCM_BIT_BASEBAND (1 << PCM_DEVICE_BASEBAND)
-#define BACKEND_CODEC_VOICE (1 << PCM_DEVICE_CODEC_VOICE)
-#define BACKEND_SPEAKER (1 << PCM_DEVICE_AMPLIFIER)
 struct route_config
 {
     const char *const output_route;
     const char *const input_route;
-    const int pcm_devices;
 };
 const struct route_config voice_speaker = {
     "voice-call-speaker",
     "voice-call-main-mic",
-    PCM_BIT_BASEBAND | BACKEND_CODEC_VOICE | BACKEND_SPEAKER,
 };
 const struct route_config voice_earpiece = {
     "voice-call-earphones",
     "voice-call-main-mic",
-    PCM_BIT_BASEBAND | BACKEND_CODEC_VOICE,
 };
 const struct route_config voice_headphones = {
     "voice-call-headphones",
     "voice-call-main-mic",
-    PCM_BIT_BASEBAND | BACKEND_CODEC_VOICE,
 };
 const struct route_config voice_headset = {
     "voice-call-headset",
     "voice-call-headset-mic",
-    PCM_BIT_BASEBAND | BACKEND_CODEC_VOICE,
 };
 const struct route_config voice_bt_sco = {
     "voice-bt-sco-headset",
     "voice-bt-sco-headset-mic",
-    PCM_BIT_BASEBAND | BACKEND_CODEC_VOICE,
 };
 const struct route_config media_speaker = {
     "media-speaker",
     "media-main-mic",
-    BACKEND_CODEC_MEDIA | BACKEND_SPEAKER,
 };
 const struct route_config media_earpiece = {
     "media-earphones",
     "media-main-mic",
-    BACKEND_CODEC_MEDIA,
 };
 const struct route_config media_headphones = {
     "media-headphones",
     "media-main-mic",
-    BACKEND_CODEC_MEDIA,
 };
 const struct route_config media_headset = {
     "media-headphones",
     "media-headset-mic",
-    BACKEND_CODEC_MEDIA,
 };
 const struct route_config media_bt_sco = {
     "media-bt-sco-headset",
     "media-bt-sco-mic",
-    BACKEND_CODEC_MEDIA,
 };
 const struct route_config voice_rec_speaker = {
     "voice-rec-speaker",
     "voice-rec-main-mic",
-    BACKEND_CODEC_MEDIA | BACKEND_SPEAKER,
 };
 const struct route_config voice_rec_headphones = {
     "voice-rec-headphones",
     "voice-rec-main-mic",
-    BACKEND_CODEC_MEDIA,
 };
 const struct route_config voice_rec_headset = {
     "voice-rec-headphones",
     "voice-rec-headset-mic",
-    BACKEND_CODEC_MEDIA,
 };
 const struct route_config communication_speaker = {
     "communication-speaker",
     "communication-main-mic",
-    BACKEND_CODEC_VOICE | BACKEND_SPEAKER,
 };
 const struct route_config communication_earpiece = {
     "communication-earphones",
     "communication-main-mic",
-    BACKEND_CODEC_VOICE,
 };
 const struct route_config communication_headphones = {
     "communication-headphones",
     "communication-main-mic",
-    BACKEND_CODEC_VOICE,
 };
 const struct route_config communication_headset = {
     "communication-headset",
     "communication-headset-mic",
-    BACKEND_CODEC_VOICE,
 };
 const struct route_config none = {
     "none",
     "none",
-    0,
 };
 const struct route_config *const route_configs[IN_SOURCE_TAB_SIZE][OUT_DEVICE_TAB_SIZE] = {
     {
@@ -251,7 +242,6 @@ const struct route_config *const route_configs[IN_SOURCE_TAB_SIZE][OUT_DEVICE_TA
 struct tfa_param_data
 {
     unsigned int size;
-    unsigned int type;
     unsigned char *data;
 };
 enum
@@ -281,24 +271,33 @@ struct audio_device
     int cur_route_id; /* current route ID: combination of input source
                            * and output device IDs */
     audio_mode_t mode;
-    struct pcm *pcm_devices[PCM_DEVICE_TOTAL][2]; /* 0 = IN, 1 = OUT */
-    struct mixer *mixer;
-    /* SCO audio */
+    struct mixer *mixer[PCM_TOTAL];
+    /* Backends */
+    struct pcm *pcm_baseband_rx;
+    struct pcm *pcm_baseband_tx;
+    struct pcm *pcm_media_rx;
+    struct pcm *pcm_media_tx;
+    struct pcm *pcm_voice_rx;
+    struct pcm *pcm_voice_tx;
+    struct pcm *pcm_amp_rx;
+    struct pcm *pcm_amp_tx;
     struct pcm *pcm_sco_rx;
     struct pcm *pcm_sco_tx;
     float voice_volume;
     bool in_call;
     bool bluetooth_nrec;
+    bool tfa_on;
     bool bypass_dsp;
     audio_channel_mask_t in_channel_mask;
     /* RIL */
     ril_handle_t ril_handle;
+    struct stream_in *input;
     struct stream_out *output;
     pthread_mutex_t lock_outputs; /* see note below on mutex acquisition order */
     /* TFA9890 */
     Tfa98xx_handle_t tfa_handle;
-    struct tfa_param_data *tfa_patch_data[TFA_PATCH_MAX], *tfa_config_data, *tfa_speaker_data,
-        *tfa_preset_data[TFA_TYPE_MAX], *tfa_eq_data[TFA_TYPE_MAX];
+    struct tfa_param_data tfa_patch_data[TFA_PATCH_MAX], tfa_config_data, tfa_speaker_data,
+        tfa_preset_data[TFA_TYPE_MAX], tfa_eq_data[TFA_TYPE_MAX];
 };
 struct stream_out
 {
@@ -321,6 +320,7 @@ struct stream_in
     struct audio_stream_in stream;
     pthread_mutex_t lock; /* see note below on mutex acquisition order */
     struct pcm *pcm;
+    struct pcm_config config;
     bool standby;
     unsigned int requested_rate;
     struct resampler_itfe *resampler;
@@ -336,12 +336,11 @@ struct stream_in
     size_t ramp_frames;
     audio_channel_mask_t channel_mask;
     audio_input_flags_t flags;
-    struct pcm_config config;
     struct audio_device *dev;
 };
-#define STRING_TO_ENUM(string) \
-    {                          \
-        #string, string        \
+#define STRING_TO_ENUM(string)                                                                     \
+    {                                                                                              \
+        #string, string                                                                            \
     }
 struct string_to_enum
 {
@@ -394,13 +393,13 @@ static int get_input_source_id(audio_source_t source)
             return IN_SOURCE_NONE;
     }
 }
-static void do_out_standby(struct stream_out *out);
+static void stop_output_stream(struct stream_out *out);
 static void adev_set_call_audio_path(struct audio_device *adev);
 static int adev_set_voice_volume(struct audio_hw_device *dev, float volume);
-static int start_tfa(struct audio_device *adev);
-static int stop_tfa(struct audio_device *adev);
-static int tfa_bypass_dsp_on(struct audio_device *adev);
-static int tfa_bypass_dsp_off(struct audio_device *adev);
+static void start_tfa(struct audio_device *adev);
+static void stop_tfa(struct audio_device *adev);
+static void tfa_bypass_dsp(struct audio_device *adev);
+static void tfa_unbypass_dsp(struct audio_device *adev);
 /**
  * NOTE: when multiple mutexes have to be acquired, always respect the
  * following order: hw device > in stream > out stream
@@ -420,8 +419,6 @@ static void select_devices(struct audio_device *adev)
     int input_source_id = get_input_source_id(adev->input_source);
     const char *output_route = NULL;
     const char *input_route = NULL;
-    int pcm_devices = 0;
-    char current_device[64] = {0};
     int new_route_id;
     new_route_id = (1 << (input_source_id + OUT_DEVICE_CNT)) + (1 << output_device_id);
     if(new_route_id == adev->cur_route_id)
@@ -436,7 +433,6 @@ static void select_devices(struct audio_device *adev)
         {
             input_route = route_configs[input_source_id][output_device_id]->input_route;
             output_route = route_configs[input_source_id][output_device_id]->output_route;
-            pcm_devices = route_configs[input_source_id][output_device_id]->pcm_devices;
         }
         else
         {
@@ -460,13 +456,11 @@ static void select_devices(struct audio_device *adev)
                     break;
             }
             input_route = (route_configs[input_source_id][output_device_id])->input_route;
-            pcm_devices = route_configs[input_source_id][output_device_id]->pcm_devices;
         }
     }
     else if(output_device_id != OUT_DEVICE_NONE)
     {
         output_route = (route_configs[IN_SOURCE_MIC][output_device_id])->output_route;
-        pcm_devices = route_configs[IN_SOURCE_MIC][output_device_id]->pcm_devices;
     }
     ALOGV("***** %s: devices=%#x, input src=%d -> "
           "output route: %s, input route: %s",
@@ -489,139 +483,143 @@ static void select_devices(struct audio_device *adev)
     }
     audio_route_update_mixer(adev->ar);
     /*
-     * Apply PCM device power
+     * Start/stop PCM backends
+     * Media codec is used for normal usage
+     * Voice codec is used for call/voice usage
+     * Amplifier backend is turned on when speaker is used
      */
-    if(pcm_devices & BACKEND_CODEC_MEDIA)
+    if(input_source_id == IN_SOURCE_NONE || input_source_id == IN_SOURCE_MIC ||
+       input_source_id == IN_SOURCE_VOICE_RECOGNITION)
     {
-        if(!adev->pcm_devices[PCM_DEVICE_CODEC_MEDIA][0])
+        if(adev->pcm_voice_rx)
         {
-            adev->pcm_devices[PCM_DEVICE_CODEC_MEDIA][0] =
-                pcm_open(PCM_CARD, PCM_DEVICE_CODEC_MEDIA, PCM_IN, &pcm_config_in);
-            pcm_prepare(adev->pcm_devices[PCM_DEVICE_CODEC_MEDIA][0]);
-            if(adev->pcm_devices[PCM_DEVICE_CODEC_MEDIA][0] &&
-               !pcm_is_ready(adev->pcm_devices[PCM_DEVICE_CODEC_MEDIA][0]))
-            {
-                ALOGE("pcm_open(CODEC_MEDIA) failed: %s",
-                      pcm_get_error(adev->pcm_devices[PCM_DEVICE_CODEC_MEDIA][0]));
-                pcm_close(adev->pcm_devices[PCM_DEVICE_CODEC_MEDIA][0]);
-            }
+            pcm_close(adev->pcm_voice_rx);
+            adev->pcm_voice_rx = NULL;
         }
-        if(!adev->pcm_devices[PCM_DEVICE_CODEC_MEDIA][1])
+        if(adev->pcm_voice_tx)
         {
-            adev->pcm_devices[PCM_DEVICE_CODEC_MEDIA][1] =
-                pcm_open(PCM_CARD, PCM_DEVICE_CODEC_MEDIA, PCM_OUT, &pcm_config_out);
-            pcm_prepare(adev->pcm_devices[PCM_DEVICE_CODEC_MEDIA][1]);
-            if(adev->pcm_devices[PCM_DEVICE_CODEC_MEDIA][1] &&
-               !pcm_is_ready(adev->pcm_devices[PCM_DEVICE_CODEC_MEDIA][1]))
+            pcm_close(adev->pcm_voice_tx);
+            adev->pcm_voice_tx = NULL;
+        }
+        if(!adev->pcm_media_rx)
+        {
+            ALOGV("Opening CODEC_MEDIA_RX");
+            adev->pcm_media_rx =
+                pcm_open(PCM_CARD, PCM_DEVICE_CODEC_MEDIA, PCM_IN, &pcm_config_backend);
+            if(adev->pcm_media_rx && !pcm_is_ready(adev->pcm_media_rx))
             {
-                ALOGE("pcm_open(CODEC_MEDIA) failed: %s",
-                      pcm_get_error(adev->pcm_devices[PCM_DEVICE_CODEC_MEDIA][1]));
-                pcm_close(adev->pcm_devices[PCM_DEVICE_CODEC_MEDIA][1]);
+                ALOGE("pcm_open(CODEC_MEDIA_RX) failed: %s", pcm_get_error(adev->pcm_media_rx));
+                pcm_close(adev->pcm_media_rx);
             }
+            pcm_prepare(adev->pcm_media_rx);
+        }
+        if(!adev->pcm_media_tx)
+        {
+            ALOGV("Opening CODEC_MEDIA_TX");
+            adev->pcm_media_tx =
+                pcm_open(PCM_CARD, PCM_DEVICE_CODEC_MEDIA, PCM_OUT, &pcm_config_backend);
+            if(adev->pcm_media_tx && !pcm_is_ready(adev->pcm_media_tx))
+            {
+                ALOGE("pcm_open(CODEC_MEDIA_TX) failed: %s", pcm_get_error(adev->pcm_media_tx));
+                pcm_close(adev->pcm_media_tx);
+            }
+            pcm_prepare(adev->pcm_media_tx);
         }
     }
     else
     {
-        if(adev->pcm_devices[PCM_DEVICE_CODEC_MEDIA][0])
-            pcm_close(adev->pcm_devices[PCM_DEVICE_CODEC_MEDIA][0]);
-        if(adev->pcm_devices[PCM_DEVICE_CODEC_MEDIA][1])
-            pcm_close(adev->pcm_devices[PCM_DEVICE_CODEC_MEDIA][1]);
-        adev->pcm_devices[PCM_DEVICE_CODEC_MEDIA][0] = NULL;
-        adev->pcm_devices[PCM_DEVICE_CODEC_MEDIA][1] = NULL;
+        if(adev->pcm_media_rx)
+        {
+            pcm_close(adev->pcm_media_rx);
+            adev->pcm_media_rx = NULL;
+        }
+        if(adev->pcm_media_tx)
+        {
+            pcm_close(adev->pcm_media_tx);
+            adev->pcm_media_tx = NULL;
+        }
+        if(!adev->pcm_voice_rx)
+        {
+            ALOGV("Opening CODEC_VOICE_RX");
+            adev->pcm_voice_rx =
+                pcm_open(PCM_CARD, PCM_DEVICE_CODEC_VOICE, PCM_IN, &pcm_config_backend);
+            if(adev->pcm_voice_rx && !pcm_is_ready(adev->pcm_voice_rx))
+            {
+                ALOGE("pcm_open(CODEC_VOICE_RX) failed: %s", pcm_get_error(adev->pcm_voice_rx));
+                pcm_close(adev->pcm_voice_rx);
+            }
+            pcm_prepare(adev->pcm_voice_rx);
+        }
+        if(!adev->pcm_voice_tx)
+        {
+            ALOGV("Opening CODEC_VOICE_TX");
+            adev->pcm_voice_tx =
+                pcm_open(PCM_CARD, PCM_DEVICE_CODEC_VOICE, PCM_OUT, &pcm_config_backend);
+            if(adev->pcm_voice_tx && !pcm_is_ready(adev->pcm_voice_tx))
+            {
+                ALOGE("pcm_open(CODEC_VOICE_TX) failed: %s", pcm_get_error(adev->pcm_voice_tx));
+                pcm_close(adev->pcm_voice_tx);
+            }
+            pcm_prepare(adev->pcm_voice_tx);
+        }
     }
-    if(pcm_devices & BACKEND_CODEC_VOICE)
+    if(!adev->in_call) tfa_unbypass_dsp(adev);
+    if(adev->out_device & AUDIO_DEVICE_OUT_SPEAKER)
     {
-        if(!adev->pcm_devices[PCM_DEVICE_CODEC_VOICE][0])
+        if(!adev->pcm_amp_rx)
         {
-            adev->pcm_devices[PCM_DEVICE_CODEC_VOICE][0] =
-                pcm_open(PCM_CARD, PCM_DEVICE_CODEC_VOICE, PCM_IN, &pcm_config_in);
-            pcm_prepare(adev->pcm_devices[PCM_DEVICE_CODEC_VOICE][0]);
-            if(adev->pcm_devices[PCM_DEVICE_CODEC_VOICE][0] &&
-               !pcm_is_ready(adev->pcm_devices[PCM_DEVICE_CODEC_VOICE][0]))
+            adev->pcm_amp_rx =
+                pcm_open(PCM_CARD, PCM_DEVICE_AMPLIFIER, PCM_IN, &pcm_config_backend);
+            if(adev->pcm_amp_rx && !pcm_is_ready(adev->pcm_amp_rx))
             {
-                ALOGE("pcm_open(CODEC_VOICE) failed: %s",
-                      pcm_get_error(adev->pcm_devices[PCM_DEVICE_CODEC_VOICE][0]));
-                pcm_close(adev->pcm_devices[PCM_DEVICE_CODEC_VOICE][0]);
+                ALOGE("pcm_open(AMPLIFIER_RX) failed: %s", pcm_get_error(adev->pcm_amp_rx));
+                pcm_close(adev->pcm_amp_rx);
             }
+            pcm_prepare(adev->pcm_amp_rx);
         }
-        if(!adev->pcm_devices[PCM_DEVICE_CODEC_VOICE][1])
+        if(!adev->pcm_amp_tx)
         {
-            adev->pcm_devices[PCM_DEVICE_CODEC_VOICE][1] =
-                pcm_open(PCM_CARD, PCM_DEVICE_CODEC_VOICE, PCM_OUT, &pcm_config_out);
-            pcm_prepare(adev->pcm_devices[PCM_DEVICE_CODEC_VOICE][1]);
-            if(adev->pcm_devices[PCM_DEVICE_CODEC_VOICE][1] &&
-               !pcm_is_ready(adev->pcm_devices[PCM_DEVICE_CODEC_VOICE][1]))
+            adev->pcm_amp_tx =
+                pcm_open(PCM_CARD, PCM_DEVICE_AMPLIFIER, PCM_OUT, &pcm_config_backend);
+            if(adev->pcm_amp_tx && !pcm_is_ready(adev->pcm_amp_tx))
             {
-                ALOGE("pcm_open(CODEC_VOICE) failed: %s",
-                      pcm_get_error(adev->pcm_devices[PCM_DEVICE_CODEC_VOICE][1]));
-                pcm_close(adev->pcm_devices[PCM_DEVICE_CODEC_VOICE][1]);
+                ALOGE("pcm_open(AMPLIFIER_TX) failed: %s", pcm_get_error(adev->pcm_amp_tx));
+                pcm_close(adev->pcm_amp_tx);
             }
+            pcm_prepare(adev->pcm_amp_tx);
         }
+        start_tfa(adev);
+        if(adev->in_call) tfa_bypass_dsp(adev);
     }
     else
     {
-        if(adev->pcm_devices[PCM_DEVICE_CODEC_VOICE][0])
-            pcm_close(adev->pcm_devices[PCM_DEVICE_CODEC_VOICE][0]);
-        if(adev->pcm_devices[PCM_DEVICE_CODEC_VOICE][1])
-            pcm_close(adev->pcm_devices[PCM_DEVICE_CODEC_VOICE][1]);
-        adev->pcm_devices[PCM_DEVICE_CODEC_VOICE][0] = NULL;
-        adev->pcm_devices[PCM_DEVICE_CODEC_VOICE][1] = NULL;
-    }
-    if(adev->pcm_devices[PCM_DEVICE_AMPLIFIER][0] && adev->pcm_devices[PCM_DEVICE_AMPLIFIER][1] &&
-       !adev->in_call && adev->bypass_dsp)
-    {
-        tfa_bypass_dsp_off(adev);
-        adev->bypass_dsp = false;
-        ALOGV("Turned off Tfa9890 bypass-dsp");
-    }
-    if(pcm_devices & BACKEND_SPEAKER)
-    {
-        if(!adev->pcm_devices[PCM_DEVICE_AMPLIFIER][0])
+        stop_tfa(adev);
+        if(adev->pcm_amp_rx)
         {
-            adev->pcm_devices[PCM_DEVICE_AMPLIFIER][0] =
-                pcm_open(PCM_CARD, PCM_DEVICE_AMPLIFIER, PCM_IN, &pcm_config_in);
-            pcm_prepare(adev->pcm_devices[PCM_DEVICE_AMPLIFIER][0]);
-            if(adev->pcm_devices[PCM_DEVICE_AMPLIFIER][0] &&
-               !pcm_is_ready(adev->pcm_devices[PCM_DEVICE_AMPLIFIER][0]))
-            {
-                ALOGE("pcm_open(AMPLIFIER) failed: %s",
-                      pcm_get_error(adev->pcm_devices[PCM_DEVICE_AMPLIFIER][0]));
-                pcm_close(adev->pcm_devices[PCM_DEVICE_AMPLIFIER][0]);
-            }
+            pcm_close(adev->pcm_amp_rx);
+            adev->pcm_amp_rx = NULL;
         }
-        if(!adev->pcm_devices[PCM_DEVICE_AMPLIFIER][1])
+        if(adev->pcm_amp_tx)
         {
-            adev->pcm_devices[PCM_DEVICE_AMPLIFIER][1] =
-                pcm_open(PCM_CARD, PCM_DEVICE_AMPLIFIER, PCM_OUT, &pcm_config_out);
-            pcm_prepare(adev->pcm_devices[PCM_DEVICE_AMPLIFIER][1]);
-            if(adev->pcm_devices[PCM_DEVICE_AMPLIFIER][1] &&
-               !pcm_is_ready(adev->pcm_devices[PCM_DEVICE_AMPLIFIER][1]))
-            {
-                ALOGE("pcm_open(AMPLIFIER) failed: %s",
-                      pcm_get_error(adev->pcm_devices[PCM_DEVICE_AMPLIFIER][1]));
-                pcm_close(adev->pcm_devices[PCM_DEVICE_AMPLIFIER][1]);
-            }
-            start_tfa(adev);
-        }
-        if(adev->in_call && !adev->bypass_dsp)
-        {
-            tfa_bypass_dsp_on(adev);
-            adev->bypass_dsp = true;
-            ALOGV("Turned on Tfa9890 bypass-dsp");
+            pcm_close(adev->pcm_amp_tx);
+            adev->pcm_amp_tx = NULL;
         }
     }
-    else
-    {
-        if(adev->pcm_devices[PCM_DEVICE_AMPLIFIER][0])
-            pcm_close(adev->pcm_devices[PCM_DEVICE_AMPLIFIER][0]);
-        if(adev->pcm_devices[PCM_DEVICE_AMPLIFIER][1])
-        {
-            pcm_close(adev->pcm_devices[PCM_DEVICE_AMPLIFIER][1]);
-            stop_tfa(adev);
-        }
-        adev->pcm_devices[PCM_DEVICE_AMPLIFIER][0] = NULL;
-        adev->pcm_devices[PCM_DEVICE_AMPLIFIER][1] = NULL;
-    }
+    /* Set up volume
+     * Mute when unneeded
+     */
+
+        struct mixer_ctl *ctl;
+        ctl =
+            mixer_get_ctl_by_name(adev->mixer[PCM_CARD], "EPOUT Digital Volume");
+        mixer_ctl_set_value(ctl, 0, (adev->out_device & AUDIO_DEVICE_OUT_EARPIECE)?128:0);
+    
+
+        ctl =
+            mixer_get_ctl_by_name(adev->mixer[PCM_CARD], "HPOUT Digital Volume");
+        mixer_ctl_set_value(ctl, 0, (adev->out_device & (AUDIO_DEVICE_OUT_WIRED_HEADPHONE | AUDIO_DEVICE_OUT_WIRED_HEADSET))?128:0);
+        mixer_ctl_set_value(ctl, 1, (adev->out_device & (AUDIO_DEVICE_OUT_WIRED_HEADPHONE | AUDIO_DEVICE_OUT_WIRED_HEADSET))?128:0);
+    
 }
 /**********************************************************
  * BT SCO functions
@@ -689,25 +687,19 @@ static void start_call(struct audio_device *adev)
     }
     adev->input_source = AUDIO_SOURCE_VOICE_CALL;
     select_devices(adev);
-    adev->pcm_devices[PCM_DEVICE_BASEBAND][0] =
-        pcm_open(PCM_CARD, PCM_DEVICE_BASEBAND, PCM_IN, &pcm_config_in);
-    pcm_prepare(adev->pcm_devices[PCM_DEVICE_BASEBAND][0]);
-    if(adev->pcm_devices[PCM_DEVICE_BASEBAND][0] &&
-       !pcm_is_ready(adev->pcm_devices[PCM_DEVICE_BASEBAND][0]))
+    adev->pcm_baseband_rx = pcm_open(PCM_CARD, PCM_DEVICE_BASEBAND, PCM_IN, &pcm_config_call);
+    pcm_prepare(adev->pcm_baseband_rx);
+    if(adev->pcm_voice_rx && !pcm_is_ready(adev->pcm_voice_rx))
     {
-        ALOGE("pcm_open(BASEBAND) failed: %s",
-              pcm_get_error(adev->pcm_devices[PCM_DEVICE_BASEBAND][0]));
-        pcm_close(adev->pcm_devices[PCM_DEVICE_BASEBAND][0]);
+        ALOGE("pcm_open(BASEBAND) failed: %s", pcm_get_error(adev->pcm_voice_rx));
+        pcm_close(adev->pcm_baseband_rx);
     }
-    adev->pcm_devices[PCM_DEVICE_BASEBAND][1] =
-        pcm_open(PCM_CARD, PCM_DEVICE_BASEBAND, PCM_OUT, &pcm_config_out);
-    pcm_prepare(adev->pcm_devices[PCM_DEVICE_BASEBAND][1]);
-    if(adev->pcm_devices[PCM_DEVICE_BASEBAND][1] &&
-       !pcm_is_ready(adev->pcm_devices[PCM_DEVICE_BASEBAND][1]))
+    adev->pcm_baseband_tx = pcm_open(PCM_CARD, PCM_DEVICE_BASEBAND, PCM_OUT, &pcm_config_call);
+    pcm_prepare(adev->pcm_baseband_tx);
+    if(adev->pcm_baseband_tx && !pcm_is_ready(adev->pcm_baseband_tx))
     {
-        ALOGE("pcm_open(BASEBAND) failed: %s",
-              pcm_get_error(adev->pcm_devices[PCM_DEVICE_BASEBAND][1]));
-        pcm_close(adev->pcm_devices[PCM_DEVICE_BASEBAND][1]);
+        ALOGE("pcm_open(BASEBAND) failed: %s", pcm_get_error(adev->pcm_baseband_tx));
+        pcm_close(adev->pcm_baseband_tx);
     }
     adev_set_call_audio_path(adev);
     adev_set_voice_volume(&adev->hw_device, adev->voice_volume);
@@ -729,10 +721,16 @@ static void stop_call(struct audio_device *adev)
               adev->out_device,
               adev->input_source);
         select_devices(adev);
-        pcm_close(adev->pcm_devices[PCM_DEVICE_BASEBAND][0]);
-        pcm_close(adev->pcm_devices[PCM_DEVICE_BASEBAND][1]);
-        adev->pcm_devices[PCM_DEVICE_BASEBAND][0] = NULL;
-        adev->pcm_devices[PCM_DEVICE_BASEBAND][1] = NULL;
+        if(adev->pcm_baseband_rx)
+        {
+            pcm_close(adev->pcm_baseband_rx);
+            adev->pcm_baseband_rx = NULL;
+        }
+        if(adev->pcm_baseband_tx)
+        {
+            pcm_close(adev->pcm_baseband_tx);
+            adev->pcm_baseband_tx = NULL;
+        }
     }
     adev->in_call = false;
 }
@@ -744,17 +742,18 @@ static void adev_set_call_audio_path(struct audio_device *adev)
         default:
             call_path = RIL_PATH_SPEAKER;
     }
-    ALOGV("RIL set path: %d", call_path);
+    ALOGV("RIL path: %d", call_path);
     ril_setPath(adev->ril_handle, call_path);
 }
 /**********************************************************
  * TFA9890 functions
  **********************************************************/
-static int start_tfa(struct audio_device *adev)
+static void start_tfa(struct audio_device *adev)
 {
     enum Tfa98xx_Error err;
     unsigned short status;
     unsigned short coldboot;
+    if(adev->tfa_on) return;
     err = Tfa98xx_ReadRegister16(adev->tfa_handle, TFA98XX_STATUSREG, &status);
     if(err != Tfa98xx_Error_Ok)
     {
@@ -777,7 +776,7 @@ static int start_tfa(struct audio_device *adev)
         if(err != Tfa98xx_Error_Ok)
         {
             ALOGE("Tfa98xx_Init failed %d\n", err);
-            return -EINVAL;
+            return;
         }
         static const int SAMPLE_RATE = 48000;
         err = Tfa98xx_SetSampleRate(adev->tfa_handle, SAMPLE_RATE);
@@ -810,7 +809,7 @@ static int start_tfa(struct audio_device *adev)
         if(err != Tfa98xx_Error_Ok)
         {
             ALOGE("Tfa98xx_ReadRegister16 failed %d", err);
-            return -EINVAL;
+            return;
         }
         timeout = 0;
         while((status & TFA98XX_STATUSREG_AREFS_MSK) == 0)
@@ -820,7 +819,7 @@ static int start_tfa(struct audio_device *adev)
             if(err != Tfa98xx_Error_Ok)
             {
                 ALOGE("Tfa98xx_ReadRegister16 failed %d", err);
-                return -EINVAL;
+                return;
             }
             usleep(20);
             timeout++;
@@ -847,7 +846,7 @@ static int start_tfa(struct audio_device *adev)
     if(err != Tfa98xx_Error_Ok)
     {
         ALOGE("Tfa98xx_DspReset failed %d", err);
-        return -EINVAL;
+        return;
     }
     /*  wait until the DSP subsystem hardware is ready
      *    note that the DSP CPU is not running yet (RST=1)
@@ -860,50 +859,60 @@ static int start_tfa(struct audio_device *adev)
         if(err != Tfa98xx_Error_Ok)
         {
             ALOGE("Tfa98xx_DspSystemStable failed %d", err);
-            return -EINVAL;
+            return;
         }
         usleep(20);
         timeout++;
         if(timeout > 50)
         {
-            ALOGV("Tfa98xx timeout: ready status %x", ready);
+            ALOGW("Tfa98xx timeout: ready status %x", ready);
             break;
         }
     }
     if(coldboot)
     {
-        unsigned short spkrCalibration;
+        unsigned short tfaCalibration;
         unsigned short mtp;
         int mtpChanged = 0;
         /* Patch the ROM code */
-        Tfa98xx_DspPatch(adev->tfa_handle,
-                         adev->tfa_patch_data[TFA_PATCH_COLDBOOT]->size,
-                         adev->tfa_patch_data[TFA_PATCH_COLDBOOT]->data);
-        Tfa98xx_DspPatch(adev->tfa_handle,
-                         adev->tfa_patch_data[TFA_PATCH_DSP]->size,
-                         adev->tfa_patch_data[TFA_PATCH_DSP]->data);
+        err = Tfa98xx_DspPatch(adev->tfa_handle,
+                               adev->tfa_patch_data[TFA_PATCH_COLDBOOT].size,
+                               adev->tfa_patch_data[TFA_PATCH_COLDBOOT].data);
+        if(err != Tfa98xx_Error_Ok)
+        {
+            ALOGE("Tfa98xx_DspPatch failed %d", err);
+            return;
+        }
+        err = Tfa98xx_DspPatch(adev->tfa_handle,
+                               adev->tfa_patch_data[TFA_PATCH_DSP].size,
+                               adev->tfa_patch_data[TFA_PATCH_DSP].data);
+        if(err != Tfa98xx_Error_Ok)
+        {
+            ALOGE("Tfa98xx_DspPatch failed %d", err);
+            return;
+        }
         /* Calibration */
-        err = Tfa98xx_ReadRegister16(adev->tfa_handle, TFA98XX_SPKR_CALIBRATION, &spkrCalibration);
+        err = Tfa98xx_ReadRegister16(adev->tfa_handle, TFA98XX_SPKR_CALIBRATION, &tfaCalibration);
         if(err != Tfa98xx_Error_Ok)
         {
             ALOGE("Tfa98xx_ReadRegister16 failed %d", err);
-            return -EINVAL;
+            return;
         }
         static const int SPKR_CALIBRATION_EXTTS_VALUE = 26;
-        spkrCalibration |= TFA98XX_SPKR_CALIBRATION_TROS_MSK;
-        spkrCalibration &= ~(TFA98XX_SPKR_CALIBRATION_EXTTS_MSK);
-        spkrCalibration |= (SPKR_CALIBRATION_EXTTS_VALUE << TFA98XX_SPKR_CALIBRATION_EXTTS_POS);
-        err = Tfa98xx_WriteRegister16(adev->tfa_handle, TFA98XX_SPKR_CALIBRATION, spkrCalibration);
+        tfaCalibration |= TFA98XX_SPKR_CALIBRATION_TROS_MSK;
+        tfaCalibration &= ~(TFA98XX_SPKR_CALIBRATION_EXTTS_MSK);
+        tfaCalibration |= (SPKR_CALIBRATION_EXTTS_VALUE << TFA98XX_SPKR_CALIBRATION_EXTTS_POS);
+        err = Tfa98xx_WriteRegister16(adev->tfa_handle, TFA98XX_SPKR_CALIBRATION, tfaCalibration);
         if(err != Tfa98xx_Error_Ok)
         {
             ALOGE("Tfa98xx_WriteRegister16 failed %d", err);
-            return -EINVAL;
+            return;
         }
         err = Tfa98xx_ReadRegister16(adev->tfa_handle, TFA98XX_MTP, &mtp);
         if(err != Tfa98xx_Error_Ok)
         {
             ALOGE("Tfa98xx_ReadRegister16 failed %d", err);
-            return -EINVAL;
+            return;
         }
         static const int otcOn = 1;
         /* set reset MTPEX bit if needed */
@@ -915,21 +924,21 @@ static int start_tfa(struct audio_device *adev)
             if(err != Tfa98xx_Error_Ok)
             {
                 ALOGE("Tfa98xx_WriteRegister16 failed %d", err);
-                return -EINVAL;
+                return;
             }
             /* MTPOTC=otcOn, MTPEX=0 */
             err = Tfa98xx_WriteRegister16(adev->tfa_handle, TFA98XX_MTP, (unsigned short)otcOn);
             if(err != Tfa98xx_Error_Ok)
             {
                 ALOGE("Tfa98xx_WriteRegister16 failed %d", err);
-                return -EINVAL;
+                return;
             }
             /* CIMTP=1 */
             err = Tfa98xx_WriteRegister16(adev->tfa_handle, 0x62, 1 << 11);
             if(err != Tfa98xx_Error_Ok)
             {
                 ALOGE("Tfa98xx_WriteRegister16 failed %d", err);
-                return -EINVAL;
+                return;
             }
             mtpChanged = 1;
         }
@@ -941,7 +950,7 @@ static int start_tfa(struct audio_device *adev)
             if(err != Tfa98xx_Error_Ok)
             {
                 ALOGE("Tfa98xx_ReadRegister16 failed %d", err);
-                return -EINVAL;
+                return;
             }
             timeout++;
             if(timeout > 50)
@@ -967,22 +976,35 @@ static int start_tfa(struct audio_device *adev)
             if(err != Tfa98xx_Error_Ok)
             {
                 ALOGE("Tfa98xx_SetMute failed %d", err);
-                return -EINVAL;
+                return;
             }
         }
     }
-    /* FIXME: Only change config when needed */
-    if(coldboot || 1)
     {
-        Tfa98xx_DspWriteSpeakerParameters(
-            adev->tfa_handle, adev->tfa_speaker_data->size, adev->tfa_speaker_data->data);
-        Tfa98xx_DspWriteConfig(
-            adev->tfa_handle, adev->tfa_config_data->size, adev->tfa_config_data->data);
+        err = Tfa98xx_DspWriteSpeakerParameters(
+            adev->tfa_handle, adev->tfa_speaker_data.size, adev->tfa_speaker_data.data);
+        if(err != Tfa98xx_Error_Ok)
+        {
+            ALOGE("Tfa98xx_DspWriteSpeakerParameters failed %d", err);
+            return;
+        }
+        err = Tfa98xx_DspWriteConfig(
+            adev->tfa_handle, adev->tfa_config_data.size, adev->tfa_config_data.data);
+        if(err != Tfa98xx_Error_Ok)
+        {
+            ALOGE("Tfa98xx_DspWriteConfig failed %d", err);
+            return;
+        }
         /* FIXME: Get stream type dynamically */
-        Tfa98xx_DspWritePreset(adev->tfa_handle,
-                               adev->tfa_preset_data[TFA_TYPE_MUSIC_1]->size,
-                               adev->tfa_preset_data[TFA_TYPE_MUSIC_1]->data);
-        char *eq_data = (char *)adev->tfa_eq_data[TFA_TYPE_MUSIC_1]->data;
+        err = Tfa98xx_DspWritePreset(adev->tfa_handle,
+                                     adev->tfa_preset_data[TFA_TYPE_MUSIC_1].size,
+                                     adev->tfa_preset_data[TFA_TYPE_MUSIC_1].data);
+        if(err != Tfa98xx_Error_Ok)
+        {
+            ALOGE("Tfa98xx_DspWritePreset failed %d", err);
+            return;
+        }
+        char *eq_data = (char *)adev->tfa_eq_data[TFA_TYPE_MUSIC_1].data;
         for(int i = 0; i < 10; i++)
         {
             int index, offset;
@@ -991,35 +1013,45 @@ static int start_tfa(struct audio_device *adev)
             if(index != (i + 1))
             {
                 ALOGE("Invalid EQ data");
-                return -EINVAL;
+                return;
             }
             if(b0 == 0 || b1 == 0 || b2 == 0 || a0 == 0 || a1 == 0)
             {
-                Tfa98xx_DspBiquad_Disable(adev->tfa_handle, index);
+                err = Tfa98xx_DspBiquad_Disable(adev->tfa_handle, index);
+                if(err != Tfa98xx_Error_Ok)
+                {
+                    ALOGE("Tfa98xx_DspBiquad_Disable failed %d", err);
+                    return;
+                }
             }
             else
             {
-                Tfa98xx_DspBiquad_SetCoeff(adev->tfa_handle, index, b0, b1, b2, a0, a1);
+                err = Tfa98xx_DspBiquad_SetCoeff(adev->tfa_handle, index, b0, b1, b2, a0, a1);
+                if(err != Tfa98xx_Error_Ok)
+                {
+                    ALOGE("Tfa98xx_DspBiquad_SetCoeff failed %d", err);
+                    return;
+                }
             }
             eq_data += offset;
         }
         err = Tfa98xx_SelectChannel(adev->tfa_handle, Tfa98xx_Channel_L_R);
-    }
-    if(err != Tfa98xx_Error_Ok)
-    {
-        ALOGE("Tfa98xx_SelectChannel failed");
-        return -EINVAL;
+        if(err != Tfa98xx_Error_Ok)
+        {
+            ALOGE("Tfa98xx_SelectChannel failed");
+            return;
+        }
     }
     if(coldboot)
     {
         unsigned short mtp;
-        unsigned short spkrCalibration;
+        unsigned short tfaCalibration;
         /* all settings loaded, signal the DSP to start calibration */
         err = Tfa98xx_SetConfigured(adev->tfa_handle);
         if(err != Tfa98xx_Error_Ok)
         {
             ALOGE("Tfa98xx_SetConfigured failed");
-            return -EINVAL;
+            return;
         }
         int tries = 0;
         static const int WAIT_TRIES = 1000;
@@ -1049,13 +1081,13 @@ static int start_tfa(struct audio_device *adev)
                 ALOGE("Tfa98xx calibration timeout");
             }
         }
-        err = Tfa98xx_ReadRegister16(adev->tfa_handle, TFA98XX_SPKR_CALIBRATION, &spkrCalibration);
+        err = Tfa98xx_ReadRegister16(adev->tfa_handle, TFA98XX_SPKR_CALIBRATION, &tfaCalibration);
         if(err != Tfa98xx_Error_Ok)
         {
             ALOGE("Tfa98xx_ReadRegister16 failed %d", err);
         }
-        spkrCalibration &= ~(TFA98XX_SPKR_CALIBRATION_TROS_MSK);
-        err = Tfa98xx_WriteRegister16(adev->tfa_handle, TFA98XX_SPKR_CALIBRATION, spkrCalibration);
+        tfaCalibration &= ~(TFA98XX_SPKR_CALIBRATION_TROS_MSK);
+        err = Tfa98xx_WriteRegister16(adev->tfa_handle, TFA98XX_SPKR_CALIBRATION, tfaCalibration);
         if(err != Tfa98xx_Error_Ok)
         {
             ALOGE("Tfa98xx_WriteRegister16 failed %d", err);
@@ -1063,23 +1095,24 @@ static int start_tfa(struct audio_device *adev)
         if(!calibrateDone)
         {
             err = Tfa98xx_Powerdown(adev->tfa_handle, 1);
-            return -EINVAL;
+            return;
         }
     }
     err = Tfa98xx_SetMute(adev->tfa_handle, Tfa98xx_Mute_Off);
     if(err != Tfa98xx_Error_Ok)
     {
         ALOGE("Tfa98xx_SetMute failed %d", err);
-        return -EINVAL;
+        return;
     }
-    return 0;
+    adev->tfa_on = true;
 }
-static int stop_tfa(struct audio_device *adev)
+static void stop_tfa(struct audio_device *adev)
 {
-    ALOGV("Tfa98xx shutdown");
     enum Tfa98xx_Error err;
     unsigned short status = 0;
     int timeout;
+    if(!adev->tfa_on) return;
+    ALOGV("Tfa98xx shutdown");
     err = Tfa98xx_SetMute(adev->tfa_handle, Tfa98xx_Mute_Amplifier);
     if(err != Tfa98xx_Error_Ok)
     {
@@ -1113,15 +1146,17 @@ static int stop_tfa(struct audio_device *adev)
     {
         ALOGE("Tfa98xx_Powerdown failed");
     }
-    return 0;
+    adev->tfa_on = false;
 }
-static int tfa_bypass_dsp_on(struct audio_device *adev)
+static void tfa_bypass_dsp(struct audio_device *adev)
 {
-    enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
+    enum Tfa98xx_Error err;
     unsigned short i2SRead = 0;
     unsigned short sysRead = 0;
     unsigned short sysCtrlRead = 0;
     unsigned short batProtRead = 0;
+    if(adev->bypass_dsp) return;
+    ALOGV("Bypassing Tfa98xx DSP");
     err = Tfa98xx_ReadRegister16(adev->tfa_handle, TFA98XX_I2SREG, &i2SRead);
     err = Tfa98xx_ReadRegister16(adev->tfa_handle, TFA98XX_I2S_SEL_REG, &sysRead);
     err = Tfa98xx_ReadRegister16(adev->tfa_handle, TFA98XX_SYS_CTRL, &sysCtrlRead);
@@ -1142,15 +1177,17 @@ static int tfa_bypass_dsp_on(struct audio_device *adev)
     err = Tfa98xx_WriteRegister16(adev->tfa_handle, TFA98XX_SYS_CTRL, sysCtrlRead);
     /* Set bypass clipper battery protection */
     err = Tfa98xx_WriteRegister16(adev->tfa_handle, TFA98XX_BAT_PROT, batProtRead);
-    return err;
+    adev->bypass_dsp = true;
 }
-static int tfa_bypass_dsp_off(struct audio_device *adev)
+static void tfa_unbypass_dsp(struct audio_device *adev)
 {
-    enum Tfa98xx_Error err = Tfa98xx_Error_Ok;
+    enum Tfa98xx_Error err;
     unsigned short i2SRead = 0;
     unsigned short sysRead = 0;
     unsigned short sysCtrlRead = 0;
     unsigned short batProtRead = 0;
+    if(!adev->bypass_dsp) return;
+    ALOGV("Unbypassing Tfa98xx DSP");
     /* basic settings for quickset */
     err = Tfa98xx_ReadRegister16(adev->tfa_handle, TFA98XX_I2SREG, &i2SRead);
     err = Tfa98xx_ReadRegister16(adev->tfa_handle, TFA98XX_I2S_SEL_REG, &sysRead);
@@ -1173,7 +1210,7 @@ static int tfa_bypass_dsp_off(struct audio_device *adev)
     err = Tfa98xx_WriteRegister16(adev->tfa_handle, TFA98XX_SYS_CTRL, sysCtrlRead);
     /* Set bypass clipper battery protection */
     err = Tfa98xx_WriteRegister16(adev->tfa_handle, TFA98XX_BAT_PROT, batProtRead);
-    return err;
+    adev->bypass_dsp = false;
 }
 /* must be called with hw device outputs list, output stream, and hw device
  * mutexes locked */
@@ -1181,17 +1218,12 @@ static int start_output_stream(struct stream_out *out)
 {
     struct audio_device *adev = out->dev;
     ALOGV("%s: starting stream", __func__);
-    if(out->device &
-       (AUDIO_DEVICE_OUT_SPEAKER | AUDIO_DEVICE_OUT_WIRED_HEADSET |
-        AUDIO_DEVICE_OUT_WIRED_HEADPHONE | AUDIO_DEVICE_OUT_AUX_DIGITAL | AUDIO_DEVICE_OUT_ALL_SCO))
+    out->pcm = pcm_open(PCM_CARD, PCM_DEVICE_PLAYBACK, PCM_OUT | PCM_MONOTONIC, &out->config);
+    if(out->pcm && !pcm_is_ready(out->pcm))
     {
-        out->pcm = pcm_open(PCM_CARD, PCM_DEVICE_PLAYBACK, PCM_OUT | PCM_MONOTONIC, &out->config);
-        if(out->pcm && !pcm_is_ready(out->pcm))
-        {
-            ALOGE("pcm_open(PLAYBACK) failed: %s", pcm_get_error(out->pcm));
-            pcm_close(out->pcm);
-            return -ENOMEM;
-        }
+        ALOGE("pcm_open(PLAYBACK) failed: %s", pcm_get_error(out->pcm));
+        pcm_close(out->pcm);
+        return -ENOMEM;
     }
     /* in call routing must go through set_parameters */
     if(!adev->in_call)
@@ -1234,9 +1266,8 @@ static int start_input_stream(struct stream_in *in)
     return 0;
 }
 static size_t get_input_buffer_size(unsigned int sample_rate, audio_format_t format,
-                                    unsigned int channel_count)
+                                    unsigned int channel_count, struct pcm_config *config)
 {
-    const struct pcm_config *config = &pcm_config_in;
     size_t size;
     /*
      * take resampling into account and return the closest majoring
@@ -1365,7 +1396,7 @@ static int out_set_format(struct audio_stream *stream __unused, audio_format_t f
 }
 /* must be called with hw device outputs list, all out streams, and hw device
  * mutex locked */
-static void do_out_standby(struct stream_out *out)
+static void stop_output_stream(struct stream_out *out)
 {
     struct audio_device *adev = out->dev;
     ALOGV("%s: output standby: %d", __func__, out->standby);
@@ -1410,7 +1441,7 @@ static int out_standby(struct audio_stream *stream)
     struct stream_out *out = (struct stream_out *)stream;
     struct audio_device *adev = out->dev;
     lock_output(adev);
-    do_out_standby(out);
+    stop_output_stream(out);
     unlock_output(adev, NULL);
     return 0;
 }
@@ -1438,7 +1469,7 @@ static int out_set_parameters(struct audio_stream *stream, const char *kvpairs)
             /* force output standby to start or stop SCO pcm stream if needed */
             if((val & AUDIO_DEVICE_OUT_ALL_SCO) ^ (out->device & AUDIO_DEVICE_OUT_ALL_SCO))
             {
-                do_out_standby(out);
+                stop_output_stream(out);
             }
             out->device = val;
             adev->out_device = val;
@@ -1504,32 +1535,11 @@ static uint32_t out_get_latency(const struct audio_stream_out *stream)
     struct stream_out *out = (struct stream_out *)stream;
     return (out->config.period_size * out->config.period_count * 1000) / out->config.rate;
 }
-static int out_set_volume(struct audio_stream_out *stream, float left, float right)
+static int out_set_volume(struct audio_stream_out *stream, float left __unused,
+                          float right __unused)
 {
     struct stream_out *out = (struct stream_out *)stream;
     struct audio_device *adev = out->dev;
-    if(out->device & AUDIO_DEVICE_OUT_EARPIECE)
-    {
-        struct mixer_ctl *ctl = mixer_get_ctl_by_name(adev->mixer, "EPOUT Digital Volume");
-        int volume;
-        volume = (int)(left * 256);
-        mixer_ctl_set_value(ctl, 0, volume);
-        return 0;
-    }
-    if(out->device & AUDIO_DEVICE_OUT_SPEAKER)
-    {
-        Tfa98xx_SetVolume(adev->tfa_handle, left);
-        return 0;
-    }
-    if(out->device & (AUDIO_DEVICE_OUT_WIRED_HEADPHONE | AUDIO_DEVICE_OUT_WIRED_HEADSET))
-    {
-        struct mixer_ctl *ctl = mixer_get_ctl_by_name(adev->mixer, "HPOUT Digital Volume");
-        int volume[2];
-        volume[0] = (int)(left * 256);
-        volume[1] = (int)(right * 256);
-        mixer_ctl_set_array(ctl, volume, sizeof(volume) / sizeof(volume[0]));
-        return 0;
-    }
     return -ENOSYS;
 }
 static ssize_t out_write(struct audio_stream_out *stream, const void *buffer, size_t bytes)
@@ -1642,7 +1652,7 @@ static uint32_t in_get_sample_rate(const struct audio_stream *stream)
 }
 static int in_set_sample_rate(struct audio_stream *stream __unused, uint32_t rate __unused)
 {
-    return 0;
+    return -ENOSYS;
 }
 static audio_channel_mask_t in_get_channels(const struct audio_stream *stream)
 {
@@ -1654,7 +1664,8 @@ static size_t in_get_buffer_size(const struct audio_stream *stream)
     struct stream_in *in = (struct stream_in *)stream;
     return get_input_buffer_size(in->requested_rate,
                                  AUDIO_FORMAT_PCM_16_BIT,
-                                 audio_channel_count_from_in_mask(in_get_channels(stream)));
+                                 audio_channel_count_from_in_mask(in_get_channels(stream)),
+                                 &in->config);
 }
 static audio_format_t in_get_format(const struct audio_stream *stream __unused)
 {
@@ -1665,7 +1676,7 @@ static int in_set_format(struct audio_stream *stream __unused, audio_format_t fo
     return -ENOSYS;
 }
 /* must be called with in stream and hw device mutex locked */
-static void do_in_standby(struct stream_in *in)
+static void stop_input_stream(struct stream_in *in)
 {
     struct audio_device *adev = in->dev;
     if(!in->standby)
@@ -1687,7 +1698,7 @@ static int in_standby(struct audio_stream *stream)
     struct stream_in *in = (struct stream_in *)stream;
     pthread_mutex_lock(&in->lock);
     pthread_mutex_lock(&in->dev->lock);
-    do_in_standby(in);
+    stop_input_stream(in);
     pthread_mutex_unlock(&in->dev->lock);
     pthread_mutex_unlock(&in->lock);
     return 0;
@@ -1731,7 +1742,7 @@ static int in_set_parameters(struct audio_stream *stream, const char *kvpairs)
             if((val & AUDIO_DEVICE_IN_BLUETOOTH_SCO_HEADSET) ^
                (in->device & AUDIO_DEVICE_IN_BLUETOOTH_SCO_HEADSET))
             {
-                do_in_standby(in);
+                stop_input_stream(in);
             }
             in->device = val;
             apply_now = !in->standby;
@@ -1847,7 +1858,10 @@ static int adev_open_output_stream(struct audio_hw_device *dev, audio_io_handle_
     out->channel_mask = AUDIO_CHANNEL_OUT_STEREO;
     if(devices == AUDIO_DEVICE_NONE) devices = AUDIO_DEVICE_OUT_SPEAKER;
     out->device = devices;
-    out->config = pcm_config_out;
+    if(1)
+    {
+        out->config = pcm_config_out;
+    }
     out->stream.common.get_sample_rate = out_get_sample_rate;
     out->stream.common.set_sample_rate = out_set_sample_rate;
     out->stream.common.get_buffer_size = out_get_buffer_size;
@@ -1939,8 +1953,18 @@ static int adev_set_voice_volume(struct audio_hw_device *dev, float volume)
     adev->voice_volume = volume;
     if(adev->mode == AUDIO_MODE_IN_CALL)
     {
-        ALOGV("RIL set volume: %f", volume);
-        ril_setVolume(adev->ril_handle, volume);
+        int base_gain;
+        switch(get_output_device_id(adev->out_device))
+        {
+            case OUT_DEVICE_SPEAKER:
+                base_gain = 232;
+                break;
+            default:
+                base_gain = 240;
+                break;
+        }
+        ALOGV("RIL volume: %f", volume);
+        ril_setVolume(adev->ril_handle, base_gain + volume * 15);
     }
     return 0;
 }
@@ -1986,12 +2010,14 @@ static int adev_get_mic_mute(const struct audio_hw_device *dev, bool *state)
     *state = adev->mic_mute;
     return 0;
 }
-static size_t adev_get_input_buffer_size(const struct audio_hw_device *dev __unused,
+static size_t adev_get_input_buffer_size(const struct audio_hw_device *dev,
                                          const struct audio_config *config)
 {
+    struct audio_device *adev = (struct audio_device *)dev;
     return get_input_buffer_size(config->sample_rate,
                                  config->format,
-                                 audio_channel_count_from_in_mask(config->channel_mask));
+                                 audio_channel_count_from_in_mask(config->channel_mask),
+                                 &adev->input->config);
 }
 static int adev_open_input_stream(struct audio_hw_device *dev, audio_io_handle_t handle,
                                   audio_devices_t devices, struct audio_config *config,
@@ -2069,6 +2095,7 @@ static int adev_open_input_stream(struct audio_hw_device *dev, audio_io_handle_t
           __func__,
           config->sample_rate,
           config->channel_mask);
+    adev->input = in;
     *stream_in = &in->stream;
     return 0;
 err_resampler:
@@ -2098,7 +2125,7 @@ static int adev_close(hw_device_t *device)
 {
     struct audio_device *adev = (struct audio_device *)device;
     audio_route_free(adev->ar);
-    mixer_close(adev->mixer);
+    mixer_close(adev->mixer[PCM_CARD]);
     /* TFA9890 */
     enum Tfa98xx_Error err;
     err = Tfa98xx_Close(adev->tfa_handle);
@@ -2108,28 +2135,22 @@ static int adev_close(hw_device_t *device)
     }
     ALOGV("Tfa98xx closed");
     int i;
-    for(i = 0; i < TFA_PATCH_MAX; i++)
+    for(int i = 0; i < TFA_PATCH_MAX; i++)
     {
-        free(adev->tfa_patch_data[i]->data);
-        free(adev->tfa_patch_data[i]);
+        free(adev->tfa_patch_data[i].data);
     }
-    free(adev->tfa_config_data->data);
-    free(adev->tfa_config_data);
-    free(adev->tfa_speaker_data->data);
-    free(adev->tfa_speaker_data);
-    for(i = 0; i < TFA_TYPE_MAX; i++)
+    free(adev->tfa_config_data.data);
+    free(adev->tfa_speaker_data.data);
+    for(int i = 0; i < TFA_TYPE_MAX; i++)
     {
-        free(adev->tfa_preset_data[i]->data);
-        free(adev->tfa_preset_data[i]);
-        free(adev->tfa_eq_data[i]->data);
-        free(adev->tfa_eq_data[i]);
+        free(adev->tfa_preset_data[i].data);
+        free(adev->tfa_eq_data[i].data);
     }
     return 0;
 }
 static int adev_open(const hw_module_t *module, const char *name, hw_device_t **device)
 {
     struct audio_device *adev;
-    int ret;
     if(strcmp(name, AUDIO_HARDWARE_INTERFACE) != 0)
     {
         return -EINVAL;
@@ -2163,7 +2184,7 @@ static int adev_open(const hw_module_t *module, const char *name, hw_device_t **
                      * selection is always applied by select_devices() */
     adev->mode = AUDIO_MODE_NORMAL;
     adev->voice_volume = 1.0f;
-    adev->mixer = mixer_open(PCM_CARD);
+    adev->mixer[PCM_CARD] = mixer_open(PCM_CARD);
     /* TFA9890 */
     static const unsigned char TFA_SLAVE_ADDRESS = 0x68;
     enum Tfa98xx_Error err;
@@ -2187,72 +2208,42 @@ static int adev_open(const hw_module_t *module, const char *name, hw_device_t **
                                                           "/system/etc/tfa98xx/music_eq_1.eq",
                                                           "/system/etc/tfa98xx/music_eq_2.eq",
                                                           "/system/etc/tfa98xx/speech_eq.eq"};
-    int i;
-    for(i = 0; i < TFA_PATCH_MAX; i++)
+    for(int i = 0; i < TFA_PATCH_MAX; i++)
     {
-        struct tfa_param_data *data = malloc(sizeof(struct tfa_param_data));
-        unsigned int size;
-        unsigned char *buf = load_file(TFA_PATCH_PATH[i], &size);
-        if(!buf)
+        adev->tfa_patch_data[i].data = load_file(TFA_PATCH_PATH[i], &adev->tfa_patch_data[i].size);
+        if(!adev->tfa_patch_data[i].data)
         {
-            ALOGE("Tfa98xx patch file not found: %s", TFA_PATCH_PATH[i]);
+            ALOGE("Failed to load Tfa98xx patch file %s: %s", TFA_PATCH_PATH[i], strerror(errno));
             return -EINVAL;
         }
-        data->size = size;
-        data->data = buf;
-        data->type = i;
-        adev->tfa_patch_data[i] = data;
     }
+    adev->tfa_config_data.data = load_file(TFA_CONFIG_PATH, &adev->tfa_config_data.size);
+    if(!adev->tfa_config_data.data)
     {
-        struct tfa_param_data *data = malloc(sizeof(struct tfa_param_data));
-        unsigned int size;
-        unsigned char *buf = load_file(TFA_CONFIG_PATH, &size);
-        if(!buf)
-        {
-            ALOGE("Tfa98xx config file not found: %s", TFA_CONFIG_PATH);
-            return -EINVAL;
-        }
-        data->size = size;
-        data->data = buf;
-        data->type = i;
-        adev->tfa_config_data = data;
-        data = malloc(sizeof(struct tfa_param_data));
-        buf = load_file(TFA_SPEAKER_PATH, &size);
-        if(!buf)
-        {
-            ALOGE("Tfa98xx speaker file not found: %s", TFA_SPEAKER_PATH);
-            return -EINVAL;
-        }
-        data->size = size;
-        data->data = buf;
-        data->type = i;
-        adev->tfa_speaker_data = data;
+        ALOGE("Failed to load Tfa98xx config file %s: %s", TFA_CONFIG_PATH, strerror(errno));
+        return -EINVAL;
     }
-    for(i = 0; i < TFA_TYPE_MAX; i++)
+    adev->tfa_speaker_data.data = load_file(TFA_SPEAKER_PATH, &adev->tfa_speaker_data.size);
+    if(!adev->tfa_speaker_data.data)
     {
-        struct tfa_param_data *data = malloc(sizeof(struct tfa_param_data));
-        unsigned int size;
-        unsigned char *buf = load_file(TFA_PRESET_PATH[i], &size);
-        if(!buf)
+        ALOGE("Failed to load Tfa98xx speaker file %s: %s", TFA_SPEAKER_PATH, strerror(errno));
+        return -EINVAL;
+    }
+    for(int i = 0; i < TFA_TYPE_MAX; i++)
+    {
+        adev->tfa_preset_data[i].data =
+            load_file(TFA_PRESET_PATH[i], &adev->tfa_preset_data[i].size);
+        if(!adev->tfa_preset_data[i].data)
         {
-            ALOGE("Tfa98xx preset file not found: %s", TFA_PRESET_PATH[i]);
+            ALOGE("Failed to load Tfa98xx preset file %s: %s", TFA_PRESET_PATH[i], strerror(errno));
             return -EINVAL;
         }
-        data->size = size;
-        data->data = buf;
-        data->type = i;
-        adev->tfa_preset_data[i] = data;
-        data = malloc(sizeof(struct tfa_param_data));
-        buf = load_file(TFA_EQ_PATH[i], &size);
-        if(!buf)
+        adev->tfa_eq_data[i].data = load_file(TFA_EQ_PATH[i], &adev->tfa_eq_data[i].size);
+        if(!adev->tfa_eq_data[i].data)
         {
-            ALOGE("Tfa98xx EQ file not found: %s", TFA_EQ_PATH[i]);
+            ALOGE("Failed to load Tfa98xx EQ file %s: %s", TFA_EQ_PATH[i], strerror(errno));
             return -EINVAL;
         }
-        data->size = size;
-        data->data = buf;
-        data->type = i;
-        adev->tfa_eq_data[i] = data;
     }
     *device = &adev->hw_device.common;
     return 0;
@@ -2267,7 +2258,7 @@ struct audio_module HAL_MODULE_INFO_SYM = {
             .module_api_version = AUDIO_MODULE_API_VERSION_0_1,
             .hal_api_version = HARDWARE_HAL_API_VERSION,
             .id = AUDIO_HARDWARE_MODULE_ID,
-            .name = "MX4Pro audio module",
+            .name = "m76 audio module",
             .author = "Tatsuyuki Ishi",
             .methods = &hal_module_methods,
         },

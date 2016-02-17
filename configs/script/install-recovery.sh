@@ -1,9 +1,9 @@
 #!/system/bin/sh
 /system/xbin/daemonsu --auto-daemon &
+stop
 setenforce 0
 echo high > /sys/power/power_mode
 unset LD_PRELOAD
-stop
 cat /dev/input/event6 > /dev/keycheck & sleep 1
 kill -9 $!
 if [ -s /dev/keycheck -o -e /cache/recovery/command ];then
@@ -22,25 +22,22 @@ export LD_LIBRARY_PATH=.:/sbin
 mkdir -p /boot
 mkdir -p /recovery
 mkdir -p /sideload
-busybox rm -f /sdcard
+rm -f /sdcard
 mkdir -p /sdcard
 mkdir -p /tmp
 mount -t tmpfs tmpfs /tmp
-chown root.shell /tmp
+chown 0.1000 /tmp
 chmod 0775 /tmp
 
 for SVC in ${SVCRUNNING}; do
   SVCNAME=$(expr ${SVC} : '\[init\.svc\.\(.*\)\]:.*')
-  [ "${SVCNAME}" != "flash_recovery" ] && stop ${SVCNAME}
+  [ "${SVCNAME}" != "flash_recovery" ] && [ "${SVCNAME}" != "ueventd" ] && [ "${SVCNAME}" != "healthd" ] && stop ${SVCNAME}
 done
 
-busybox killall -9 daemonsu
+killall -9 daemonsu
 
 umount /mnt/shell/emulated
-umount /storage/emulated/0
-umount /storage/emulated/0/Android/obb
-umount /storage/emulated/legacy
-umount /storage/emulated/legacy/Android/obb
+umount -d /mnt/cdrom
 
 export ANDROID_ROOT=/system
 export ANDROID_DATA=/data

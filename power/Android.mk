@@ -1,4 +1,4 @@
-# Copyright (C) 2016 The CyanogenMod Project
+# Copyright (C) 2015 The CyanogenMod Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,27 +14,13 @@
 
 LOCAL_PATH := $(call my-dir)
 
-# gps symbols
-include $(CLEAR_VARS)
-LOCAL_SHARED_LIBRARIES := liblog libcutils libgui libbinder libutils
-LOCAL_SRC_FILES := libshim_gps.c
-LOCAL_MODULE := libshim_gps
-LOCAL_MODULE_TAGS := optional
-include $(BUILD_SHARED_LIBRARY)
 
-# ril symbols
 include $(CLEAR_VARS)
-LOCAL_SRC_FILES := libshim_ril.c
-LOCAL_SHARED_LIBRARIES := libbinder
-LOCAL_MODULE := libshim_ril
-LOCAL_MODULE_TAGS := optional
-include $(BUILD_SHARED_LIBRARY)
 
-
-# icu53 symbols
-include $(CLEAR_VARS)
-LOCAL_SRC_FILES := icu53.c
-LOCAL_SHARED_LIBRARIES := libicuuc libicui18n
-LOCAL_MODULE := libshim_icu53
+LOCAL_MODULE := power.$(TARGET_BOOTLOADER_BOARD_NAME)
+LOCAL_MODULE_RELATIVE_PATH := hw
+LOCAL_SHARED_LIBRARIES := liblog libcutils
+LOCAL_SRC_FILES := power.c
 LOCAL_MODULE_TAGS := optional
+
 include $(BUILD_SHARED_LIBRARY)

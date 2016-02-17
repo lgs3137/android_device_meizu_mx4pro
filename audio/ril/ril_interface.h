@@ -7,7 +7,7 @@ enum ril_path
 };
 int ril_open(ril_handle_t *handle);
 int ril_close(ril_handle_t handle);
-int ril_setVolume(ril_handle_t handle, float volume);
+int ril_setVolume(ril_handle_t handle, unsigned char volume);
 int ril_setMute(ril_handle_t handle, int mute);
 int ril_setPath(ril_handle_t handle, enum ril_path path);
 #endif /* RIL_INTERFACE_H */

@@ -4,6 +4,8 @@ TARGET_ARCH := arm
 TARGET_NO_BOOTLOADER := true
 TARGET_NO_RADIOIMAGE := true
 
+USE_CLANG_PLATFORM_BUILD := true
+
 # Platform
 TARGET_BOARD_PLATFORM := exynos5
 TARGET_SLSI_VARIANT := cm
@@ -49,14 +51,17 @@ TARGET_KERNEL_SOURCE := kernel/meizu/mx4pro
 BOARD_HAS_LARGE_FILESYSTEM := true
 TARGET_USERIMAGES_USE_EXT4 := true
 
-### AUDIO
-BOARD_USE_ALP_AUDIO := true
-BOARD_USE_SEIREN_AUDIO := true
-
 ### CAMERA
+USE_CAMERA_STUB := true
 # frameworks/av/services/camera/libcameraservice
 BOARD_NEEDS_MEMORYHEAPION := true
-BOARD_USE_SAMSUNG_CAMERAFORMAT_NV21 := true
+# frameworks/av/camera, camera blob support
+COMMON_GLOBAL_CFLAGS += -DSAMSUNG_CAMERA_HARDWARE
+
+BOARD_BACK_CAMERA_ROTATION := 0
+BOARD_FRONT_CAMERA_ROTATION := 0
+BOARD_BACK_CAMERA_SENSOR := SENSOR_NAME_IMX220
+BOARD_FRONT_CAMERA_SENSOR := SENSOR_NAME_OV5693
 
 # Graphics
 USE_OPENGL_RENDERER := true
@@ -65,8 +70,10 @@ USE_OPENGL_RENDERER := true
 BOARD_OVERRIDE_RS_CPU_VARIANT_32 := cortex-a15
 
 # frameworks/native/services/surfaceflinger
-NUM_FRAMEBUFFER_SURFACE_BUFFERS := 5
-BOARD_EGL_NEEDS_HANDLE_VALUE := true
+# Android keeps 2 surface buffers at all time in case the hwcomposer
+# misses the time to swap buffers (in cases where it takes 16ms or
+# less). Use 3 to avoid timing issues.
+NUM_FRAMEBUFFER_SURFACE_BUFFERS := 3
 
 # Exynos display
 BOARD_USES_VIRTUAL_DISPLAY := true
@@ -75,7 +82,6 @@ BOARD_USES_VIRTUAL_DISPLAY := true
 BOARD_USES_HWC_SERVICES := true
 
 # HDMI
-BOARD_HDMI_INCAPABLE := true
 BOARD_USES_NEW_HDMI := true
 BOARD_USES_GSC_VIDEO := true
 
@@ -92,18 +98,28 @@ BOARD_USES_TRUST_KEYMASTER := true
 # Samsung LSI OpenMAX
 COMMON_GLOBAL_CFLAGS += -DUSE_NATIVE_SEC_NV12TILED
 
+# Samsung Seiren audio
+BOARD_USE_ALP_AUDIO := true
+BOARD_USE_SEIREN_AUDIO := true
+
 # Samsung OpenMAX Video
 BOARD_USE_STOREMETADATA := true
 BOARD_USE_METADATABUFFERTYPE := true
 BOARD_USE_DMA_BUF := true
 BOARD_USE_ANB_OUTBUF_SHARE := true
 BOARD_USE_IMPROVED_BUFFER := true
+
+# HEVC support in libvideocodec
+BOARD_USE_HEVC_HWIP := true
+
 BOARD_USE_NON_CACHED_GRAPHICBUFFER := true
 BOARD_USE_GSC_RGB_ENCODER := true
+BOARD_USE_ENCODER_RGBINPUT_SUPPORT := true
 BOARD_USE_CSC_HW := true
 BOARD_USE_QOS_CTRL := false
 BOARD_USE_S3D_SUPPORT := true
 BOARD_USE_VP8ENC_SUPPORT := true
+BOARD_USE_HEVCDEC_SUPPORT := true
 
 # Include path
 TARGET_SPECIFIC_HEADER_PATH := $(LOCAL_PATH)/include
@@ -116,8 +132,8 @@ BOARD_HOSTAPD_DRIVER		:= NL80211
 BOARD_HOSTAPD_PRIVATE_LIB	:= lib_driver_cmd_bcmdhd
 BOARD_WLAN_DEVICE		:= bcmdhd
 WIFI_DRIVER_FW_PATH_PARAM	:= "/sys/module/bcmdhd/parameters/firmware_path"
-WIFI_DRIVER_FW_PATH_AP		:= "/system/vendor/firmware/fw_bcmdhd_apsta.bin"
-WIFI_DRIVER_FW_PATH_STA		:= "/system/vendor/firmware/fw_bcmdhd.bin"
+WIFI_DRIVER_FW_PATH_AP		:= "/vendor/firmware/fw_bcmdhd_apsta.bin"
+WIFI_DRIVER_FW_PATH_STA		:= "/vendor/firmware/fw_bcmdhd.bin"
 
 # BLUETOOTH
 BOARD_HAVE_BLUETOOTH_BCM := true
@@ -138,19 +154,20 @@ BOARD_USES_WFD := true
 EXTENDED_FONT_FOOTPRINT := true
 
 ### TWRP RECOVERY
-TW_BUILD_ZH_CN_SUPPORT := true
-TW_USE_TOOLBOX := true
+RECOVERY_VARIANT := twrp
+TW_EXTRA_LANGUAGES := true
+TW_DEFAULT_LANGUAGE := zh_CN
 TARGET_RECOVERY_FSTAB := $(LOCAL_PATH)/configs/script/recovery.fstab
-DEVICE_RESOLUTION := 1440x2560
+TW_THEME := portrait_hdpi
+TW_MTP_DEVICE := "/dev/mtp_usb"
 TW_ALWAYS_RMRF := true
 TW_HAS_NO_BOOT_PARTITION := true
 TW_HAS_NO_RECOVERY_PARTITION := true
 BOARD_HAS_NO_REAL_SDCARD := true
 RECOVERY_SDCARD_ON_DATA := true
-TW_NO_REBOOT_BOOTLOADER := true
-
-# The kernel has exfat support.
+RECOVERY_GRAPHICS_FORCE_USE_LINELENGTH := true
 TW_NO_EXFAT_FUSE := true
+TW_NO_EXFAT := true
 
 # Releasetools
 TARGET_RELEASETOOLS_EXTENSIONS := $(LOCAL_PATH)/configs/script

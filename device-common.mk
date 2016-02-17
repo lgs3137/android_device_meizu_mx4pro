@@ -14,7 +14,6 @@ PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.hardware.bluetooth_le.xml:system/etc/permissions/android.hardware.bluetooth_le.xml \
     frameworks/native/data/etc/android.hardware.camera.flash-autofocus.xml:system/etc/permissions/android.hardware.camera.flash-autofocus.xml \
     frameworks/native/data/etc/android.hardware.camera.front.xml:system/etc/permissions/android.hardware.camera.front.xml \
-    frameworks/native/data/etc/android.hardware.ethernet.xml:system/etc/permissions/android.hardware.ethernet.xml \
     frameworks/native/data/etc/android.hardware.location.gps.xml:system/etc/permissions/android.hardware.location.gps.xml \
     frameworks/native/data/etc/android.hardware.nfc.hce.xml:system/etc/permissions/android.hardware.nfc.hce.xml \
     frameworks/native/data/etc/android.hardware.nfc.xml:system/etc/permissions/android.hardware.nfc.xml \
@@ -42,7 +41,7 @@ PRODUCT_COPY_FILES += \
 ### GRAPHICS
 ###########################################################
 
-PRODUCT_AAPT_CONFIG := normal xxxhdpi
+PRODUCT_AAPT_CONFIG := normal
 PRODUCT_AAPT_PREF_CONFIG := 640dpi
 
 PRODUCT_PROPERTY_OVERRIDES += \
@@ -51,6 +50,7 @@ PRODUCT_PROPERTY_OVERRIDES += \
     ro.bq.gpu_to_cpu_unsupported=1
 
 PRODUCT_PACKAGES += \
+    libfimg \
     libion \
     libion_exynos \
     gralloc.exynos5 \
@@ -67,20 +67,16 @@ PRODUCT_PACKAGES += \
     libshim_ril \
     libshim_icu53
 
-PRODUCT_PROPERTY_OVERRIDES += \
-    rild.libpath=/system/lib/libmarvell-ril.so
 
 # LTE, CDMA, GSM/WCDMA
 PRODUCT_PROPERTY_OVERRIDES += \
+    rild.libpath=/system/lib/libmarvell-ril.so \
     ro.telephony.default_network=21 \
     telephony.lteOnCdmaDevice=1
 
 ###########################################################
 ### WIFI
 ###########################################################
-
-PRODUCT_PROPERTY_OVERRIDES += \
-    wifi.interface=wlan0
 
 PRODUCT_PACKAGES += \
     hostapd \
@@ -110,9 +106,9 @@ PRODUCT_COPY_FILES += \
 
 PRODUCT_PACKAGES += \
     com.android.nfc_extras \
+    nfc_nci.pn54x.m76 \
     NfcNci \
     Tag
-
 
 ###########################################################
 ### AUDIO
@@ -138,24 +134,9 @@ PRODUCT_PROPERTY_OVERRIDES += \
 PRODUCT_COPY_FILES += \
     frameworks/av/media/libstagefright/data/media_codecs_google_audio.xml:system/etc/media_codecs_google_audio.xml \
     frameworks/av/media/libstagefright/data/media_codecs_google_telephony.xml:system/etc/media_codecs_google_telephony.xml \
-    frameworks/av/media/libstagefright/data/media_codecs_google_video.xml:system/etc/media_codecs_google_video.xml  \
+    frameworks/av/media/libstagefright/data/media_codecs_google_video.xml:system/etc/media_codecs_google_video.xml \
     $(LOCAL_PATH)/configs/media/media_codecs.xml:system/etc/media_codecs.xml \
     $(LOCAL_PATH)/configs/media/media_profiles.xml:system/etc/media_profiles.xml
-
-# Stagefright and device specific modules
-PRODUCT_PACKAGES += \
-    libstagefrighthw \
-    libExynosOMX_Core
-
-# Video codecs
-PRODUCT_PACKAGES += \
-    libOMX.Exynos.AVC.Encoder \
-    libOMX.Exynos.AVC.Decoder \
-    libOMX.Exynos.HEVC.Decoder \
-    libOMX.Exynos.MPEG4.Decoder \
-    libOMX.Exynos.MPEG4.Encoder \
-    libOMX.Exynos.VP8.Decoder \
-    libOMX.Exynos.WMV.Decoder
 
 ###########################################################
 ### LIGHTS
@@ -195,12 +176,20 @@ PRODUCT_PACKAGES += \
 ###########################################################
 
 PRODUCT_PACKAGES += \
-    libshim_camera \
+    libexynoscamera \
+    camera.m76 \
     Snap
 
 # This fixes switching between front/back camera sensors
 PRODUCT_PROPERTY_OVERRIDES += \
     camera2.portability.force_api=1
+
+###########################################################
+### POWER
+###########################################################
+
+PRODUCT_PACKAGES += \
+    power.m76
 
 ###########################################################
 ### TOUCH KEY
@@ -272,6 +261,7 @@ PRODUCT_PROPERTY_OVERRIDES += \
 ###########################################################
 
 PRODUCT_PROPERTY_OVERRIDES += \
+    wifi.interface=wlan0 \
     persist.demo.hdmirotationlock=false \
     persist.hdmi.hdcp_enabled=0 \
     persist.sys.strictmode.disable=true \

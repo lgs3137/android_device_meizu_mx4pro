@@ -4,7 +4,6 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-#include <math.h>
 #include "audio_stub.h"
 #include "ril_interface.h"
 #define CTL_PATH "/dev/audiostub_ctl"
@@ -25,11 +24,11 @@ int ril_close(int handle)
     }
     return 0;
 }
-int ril_setVolume(int handle, float volume)
+int ril_setVolume(int handle, unsigned char volume)
 {
     struct volume_ctlmsg msg = {0};
     msg.direction = 1;
-    msg.hd_gain = msg.gain = 232 + lrintf(volume * 15);
+    msg.hd_gain = msg.gain = volume;
     if(ioctl(handle, AUDIOSTUB_VOLUMECTL, &msg) == -1)
         return errno;
     return 0;
