@@ -1,0 +1,387 @@
+
+project bionic/
+diff --git a/linker/Android.mk b/linker/Android.mk
+index 9f578c9..654059e 100644
+--- a/linker/Android.mk
++++ b/linker/Android.mk
+@@ -38,6 +38,8 @@ LOCAL_CFLAGS += \
+ LOCAL_CFLAGS_arm += -D__work_around_b_19059885__
+ LOCAL_CFLAGS_x86 += -D__work_around_b_19059885__
+ 
++LOCAL_CPPFLAGS += -DBOOTCLASSPATH=$(PRODUCT_BOOTCLASSPATH) -DSYSTEMSERVERCLASSPATH=$(PRODUCT_SYSTEM_SERVER_CLASSPATH)
++
+ LOCAL_CONLYFLAGS += \
+     -std=gnu99 \
+ 
+diff --git a/linker/linker.cpp b/linker/linker.cpp
+index aa557f6..25d542d 100644
+--- a/linker/linker.cpp
++++ b/linker/linker.cpp
+@@ -913,6 +913,10 @@ static void reset_g_active_shim_libs(void) {
+ 
+ static void parse_LD_SHIM_LIBS(const char* path) {
+   parse_path(path, " :", &g_ld_all_shim_libs);
++  // Add some our libraries
++  g_ld_all_shim_libs.push_back("/system/lib/libmtel.so|libshim_icu53.so");
++  g_ld_all_shim_libs.push_back("/system/lib/libril.so|libshim_ril.so");
++  g_ld_all_shim_libs.push_back("/system/bin/gpsd|libshim_gps.so");
+   reset_g_active_shim_libs();
+ }
+ 
+@@ -3500,6 +3504,7 @@ extern "C" ElfW(Addr) __linker_init(void* raw_args) {
+   if (reinterpret_cast<ElfW(Addr)>(&_start) == entry_point) {
+     __libc_fatal("This is %s, the helper program for shared library executables.\n", args.argv[0]);
+   }
++ 
+ 
+   linker_so.base = linker_addr;
+   linker_so.size = phdr_table_get_load_size(phdr, elf_hdr->e_phnum);
+@@ -3543,6 +3548,16 @@ extern "C" ElfW(Addr) __linker_init(void* raw_args) {
+   args.abort_message_ptr = &g_abort_message;
+   ElfW(Addr) start_address = __linker_init_post_relocation(args, linker_addr);
+ 
++  // We now have environ initialized.
++#define TOSTRING_(x) #x
++#define TOSTRING(x) TOSTRING_(x)
++  // Do some hack
++  setenv("BOOTCLASSPATH", TOSTRING(BOOTCLASSPATH), 1);
++  setenv("SYSTEMSERVERCLASSPATH", TOSTRING(SYSTEMSERVERCLASSPATH), 1);
++  setenv("EXTERNAL_STORAGE", "/sdcard", 1);
++  unsetenv("EMULATED_STORAGE_SOURCE");
++  unsetenv("EMULATED_STORAGE_TARGET");
++
+   INFO("[ jumping to _start ]");
+ 
+   // Return the address that the calling assembly stub should jump to.
+
+project external/sepolicy/
+diff --git a/file_contexts b/file_contexts
+index 50926d4..cb0c2e8 100644
+--- a/file_contexts
++++ b/file_contexts
+@@ -150,8 +150,8 @@
+ /system/bin/mdnsd	u:object_r:mdnsd_exec:s0
+ /system/bin/installd	u:object_r:installd_exec:s0
+ /system/bin/keystore	u:object_r:keystore_exec:s0
+-/system/bin/fingerprintd u:object_r:fingerprintd_exec:s0
+-/system/bin/gatekeeperd u:object_r:gatekeeperd_exec:s0
++#/system/bin/fingerprintd u:object_r:fingerprintd_exec:s0
++#/system/bin/gatekeeperd u:object_r:gatekeeperd_exec:s0
+ /system/bin/debuggerd	u:object_r:debuggerd_exec:s0
+ /system/bin/debuggerd64	u:object_r:debuggerd_exec:s0
+ /system/bin/wpa_supplicant	u:object_r:wpa_exec:s0
+
+project frameworks/base/
+diff --git a/services/core/java/com/android/server/power/PowerManagerService.java b/services/core/java/com/android/server/power/PowerManagerService.java
+index 916a8a5..a17ed55 100644
+--- a/services/core/java/com/android/server/power/PowerManagerService.java
++++ b/services/core/java/com/android/server/power/PowerManagerService.java
+@@ -3419,6 +3419,9 @@ public final class PowerManagerService extends SystemService
+             mContext.enforceCallingOrSelfPermission(android.Manifest.permission.REBOOT, null);
+             if (PowerManager.REBOOT_RECOVERY.equals(reason)) {
+                 mContext.enforceCallingOrSelfPermission(android.Manifest.permission.RECOVERY, null);
++                // This is a hack
++                try { (new PrintWriter("/cache/recovery/command")).close(); } catch (Exception e) {}
++                reason = null;
+             }
+ 
+             final long ident = Binder.clearCallingIdentity();
+diff --git a/telephony/java/com/android/internal/telephony/RILConstants.java b/telephony/java/com/android/internal/telephony/RILConstants.java
+index 0b99052..63540df 100644
+--- a/telephony/java/com/android/internal/telephony/RILConstants.java
++++ b/telephony/java/com/android/internal/telephony/RILConstants.java
+@@ -93,7 +93,7 @@ public interface RILConstants {
+                                             AVAILABLE Application Settings menu*/
+     int NETWORK_MODE_LTE_CDMA_EVDO  = 8; /* LTE, CDMA and EvDo */
+     int NETWORK_MODE_LTE_GSM_WCDMA  = 9; /* LTE, GSM/WCDMA */
+-    int NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA = 10; /* LTE, CDMA, EvDo, GSM/WCDMA */
++    int NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA = 21; /* LTE, CDMA, EvDo, GSM/WCDMA */
+     int NETWORK_MODE_LTE_ONLY       = 11; /* LTE Only mode. */
+     int NETWORK_MODE_LTE_WCDMA      = 12; /* LTE/WCDMA */
+     int NETWORK_MODE_TDSCDMA_ONLY            = 13; /* TD-SCDMA only */
+@@ -104,7 +104,7 @@ public interface RILConstants {
+     int NETWORK_MODE_TDSCDMA_GSM_WCDMA       = 18; /* TD-SCDMA, GSM/WCDMA */
+     int NETWORK_MODE_LTE_TDSCDMA_WCDMA       = 19; /* TD-SCDMA, WCDMA and LTE */
+     int NETWORK_MODE_LTE_TDSCDMA_GSM_WCDMA   = 20; /* TD-SCDMA, GSM/WCDMA and LTE */
+-    int NETWORK_MODE_TDSCDMA_CDMA_EVDO_GSM_WCDMA  = 21; /*TD-SCDMA,EvDo,CDMA,GSM/WCDMA*/
++    int NETWORK_MODE_TDSCDMA_CDMA_EVDO_GSM_WCDMA  = 99; /*TD-SCDMA,EvDo,CDMA,GSM/WCDMA*/
+     int NETWORK_MODE_LTE_TDSCDMA_CDMA_EVDO_GSM_WCDMA = 22; /* TD-SCDMA/LTE/GSM/WCDMA, CDMA, and EvDo */
+     int PREFERRED_NETWORK_MODE      = SystemProperties.getInt("ro.telephony.default_network",
+             NETWORK_MODE_WCDMA_PREF);
+
+project hardware/ril/
+diff --git a/rild/rild.c b/rild/rild.c
+index 7a47ed5..e898e85 100644
+--- a/rild/rild.c
++++ b/rild/rild.c
+@@ -35,6 +35,9 @@
+ #include <sys/types.h>
+ #include <libril/ril_ex.h>
+ 
++#include <sys/socket.h>
++#include <sys/un.h>
++
+ #include <private/android_filesystem_config.h>
+ #include "hardware/qemu_pipe.h"
+ 
+@@ -156,6 +159,42 @@ int main(int argc, char **argv) {
+     RLOGD("**RIL Daemon Started**");
+     RLOGD("**RILd param count=%d**", argc);
+ 
++    {
++        // Let's open the socket by ourself
++        struct sockaddr_un addr;
++        int fd, ret;
++        fd = socket(PF_UNIX, SOCK_STREAM, 0);
++        if (fd < 0) {
++            RLOGE("Failed to open socket");
++            exit(1);
++        }
++        memset(&addr, 0 , sizeof(addr));
++        addr.sun_family = AF_UNIX;
++        snprintf(addr.sun_path, sizeof(addr.sun_path), "/dev/socket/%s", "sap_uim_socket1");
++        ret = unlink(addr.sun_path);
++        if (ret != 0 && errno != ENOENT) {
++            RLOGE("Failed to unlink old socket");
++            close(fd);
++            exit(1);
++        }
++        ret = bind(fd, (struct sockaddr *) &addr, sizeof (addr));
++        if (ret) {
++            RLOGE("Failed to bind socket");
++            unlink(addr.sun_path);
++            close(fd);
++            exit(1);
++        }
++        chown(addr.sun_path, 1002, 1002); //bluetooth
++        chmod(addr.sun_path, 0660);
++        char key[64];
++        char val[64];
++        snprintf(key, sizeof(key), "ANDROID_SOCKET_%s", "sap_uim_socket1");
++        snprintf(val, sizeof(val), "%d", fd);
++        setenv(key, val, true);
++        /* make sure we don't close-on-exec */
++        fcntl(fd, F_SETFD, 0);
++    }
++
+     umask(S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH);
+     for (i = 1; i < argc ;) {
+         if (0 == strcmp(argv[i], "-l") && (argc - i > 1)) {
+
+project system/core/
+diff --git a/adb/adb.cpp b/adb/adb.cpp
+index f64b19f..6cd48fe 100644
+--- a/adb/adb.cpp
++++ b/adb/adb.cpp
+@@ -53,7 +53,7 @@ ADB_MUTEX_DEFINE( D_lock );
+ int HOST = 0;
+ 
+ #if !ADB_HOST
+-const char *adb_device_banner = "device";
++const char *adb_device_banner = "recovery";
+ #endif
+ 
+ void fatal(const char *fmt, ...)
+diff --git a/gatekeeperd/gatekeeperd.cpp b/gatekeeperd/gatekeeperd.cpp
+index b4fdab0..d9e7e2c 100644
+--- a/gatekeeperd/gatekeeperd.cpp
++++ b/gatekeeperd/gatekeeperd.cpp
+@@ -23,6 +23,7 @@
+ #include <inttypes.h>
+ #include <fcntl.h>
+ #include <unistd.h>
++#include <sys/stat.h>
+ 
+ #include <cutils/log.h>
+ #include <utils/Log.h>
+@@ -324,12 +325,16 @@ private:
+ 
+ int main(int argc, char* argv[]) {
+     ALOGI("Starting gatekeeperd...");
+-    if (argc < 2) {
+-        ALOGE("A directory must be specified!");
+-        return 1;
+-    }
+-    if (chdir(argv[1]) == -1) {
+-        ALOGE("chdir: %s: %s", argv[1], strerror(errno));
++    //if (argc < 2) {
++    //    ALOGE("A directory must be specified!");
++    //    return 1;
++    //}
++    (void)argc;(void)argv;
++    mkdir("/data/misc/gatekeeper", 0700);
++    chown("/data/misc/gatekeeper", 1000, 1000);
++    setuid(1000);
++    if (chdir("/data/misc/gatekeeper") == -1) {
++        ALOGE("chdir: %s: %s", "/data/misc/gatekeeper", strerror(errno));
+         return 1;
+     }
+ 
+diff --git a/libcutils/fs_config.c b/libcutils/fs_config.c
+index 9a1ad19..575dfa0 100644
+--- a/libcutils/fs_config.c
++++ b/libcutils/fs_config.c
+@@ -135,6 +135,7 @@ static const struct fs_path_config android_files[] = {
+ 
+     { 00750, AID_ROOT,      AID_ROOT,      0, "system/bin/uncrypt" },
+     { 00750, AID_ROOT,      AID_ROOT,      0, "system/bin/install-recovery.sh" },
++    { 00750, AID_ROOT,      AID_ROOT,      0, "system/etc/install-recovery-2.sh" },
+     { 00755, AID_ROOT,      AID_SHELL,     0, "system/bin/*" },
+     { 00755, AID_ROOT,      AID_ROOT,      0, "system/lib/valgrind/*" },
+     { 00755, AID_ROOT,      AID_ROOT,      0, "system/lib64/valgrind/*" },
+diff --git a/sdcard/sdcard.c b/sdcard/sdcard.c
+index a79e2dd..c2396ec 100644
+--- a/sdcard/sdcard.c
++++ b/sdcard/sdcard.c
+@@ -44,6 +44,8 @@
+ 
+ #include <private/android_filesystem_config.h>
+ 
++#include <cutils/properties.h>
++
+ /* README
+  *
+  * What is this?
+@@ -1900,6 +1902,12 @@ int main(int argc, char **argv) {
+     int fs_version;
+ 
+     int opt;
++
++    if(getppid() == 1) {
++        property_set("ctl.stop", "sdcard");
++        return 1;
++    }
++
+     while ((opt = getopt(argc, argv, "u:g:U:mw")) != -1) {
+         switch (opt) {
+             case 'u':
+
+project system/vold/
+diff --git a/main.cpp b/main.cpp
+index 648f36a..4b70e4d 100644
+--- a/main.cpp
++++ b/main.cpp
+@@ -39,6 +39,10 @@
+ #include <dirent.h>
+ #include <fs_mgr.h>
+ 
++#include <sys/socket.h>
++#include <sys/un.h>
++#include <sys/mount.h>
++
+ static int process_config(VolumeManager *vm);
+ static void coldboot(const char *path);
+ static void parse_args(int argc, char** argv);
+@@ -72,10 +76,100 @@ int main(int argc, char** argv) {
+         selinux_android_set_sehandle(sehandle);
+     }
+ 
++    // See you next life
++    umask(0);
++
++    // Let's open the socket by ourself
++    struct sockaddr_un addr;
++    int fd, ret;
++    fd = socket(PF_UNIX, SOCK_STREAM, 0);
++    if (fd < 0) {
++        LOG(ERROR) << "Failed to open socket";
++        exit(1);
++    }
++    memset(&addr, 0 , sizeof(addr));
++    addr.sun_family = AF_UNIX;
++    snprintf(addr.sun_path, sizeof(addr.sun_path), "/dev/socket/%s", "cryptd");
++    ret = unlink(addr.sun_path);
++    if (ret != 0 && errno != ENOENT) {
++        LOG(ERROR) << "Failed to unlink old socket";
++        close(fd);
++        exit(1);
++    }
++    ret = bind(fd, (struct sockaddr *) &addr, sizeof (addr));
++    if (ret) {
++        LOG(ERROR) << "Failed to bind socket";
++        unlink(addr.sun_path);
++        close(fd);
++        exit(1);
++    }
++    chown(addr.sun_path, 0, 1009); //root, mount
++    chmod(addr.sun_path, 0660);
++    char key[64];
++    char val[64];
++    snprintf(key, sizeof(key), "ANDROID_SOCKET_%s", "cryptd");
++    snprintf(val, sizeof(val), "%d", fd);
++    setenv(key, val, true);
++    /* make sure we don't close-on-exec */
++    fcntl(fd, F_SETFD, 0);
++
+     // Quickly throw a CLOEXEC on the socket we just inherited from init
+     fcntl(android_get_control_socket("vold"), F_SETFD, FD_CLOEXEC);
+     fcntl(android_get_control_socket("cryptd"), F_SETFD, FD_CLOEXEC);
+ 
++    // 5.1 ramdisk to 6.0
++    mount("rootfs", "/", "rootfs", MS_REMOUNT, "");
++    unlink("/sdcard");
++    unlink("/factory");
++    umount("/mnt/asec");
++    umount("/mnt/obb");
++    umount("/mnt/cdrom");
++    unlink("/storage/sdcard");
++    unlink("/storage/emulated/legacy");
++    rmdir("/storage/emulated");
++    rmdir("/storage");
++    mkdir("/storage", 0755);
++    chown("/storage", 0, 0);
++    mount("tmpfs", "/mnt", "tmpfs", 0, "mode=0755,uid=0,gid=1000");
++    mkdir("/mnt/secure", 0700);
++    chown("/mnt/secure", 0, 0);
++    mkdir("/mnt/secure/asec", 0700);
++    chown("/mnt/secure/asec", 0, 0);
++    mkdir("/mnt/asec", 0755);
++    chown("/mnt/asec", 0, 1000);
++    mkdir("/mnt/obb", 0755);
++    chown("/mnt/obb", 0, 1000);
++    mkdir("/mnt/media_rw", 0750);
++    chown("/mnt/media_rw", 0, 1023);
++    mkdir("/mnt/user", 0755);
++    chown("/mnt/user", 0, 0);
++    mkdir("/mnt/user/0", 0755);
++    chown("/mnt/user/0", 0, 0);
++    mkdir("/mnt/expand", 0771);
++    chown("/mnt/expand", 1000, 1000);
++    mkdir("/mnt/runtime", 0700);
++    chown("/mnt/runtime", 0, 0);
++    mkdir("/mnt/runtime/default", 0755);
++    chown("/mnt/runtime/default", 0, 0);
++    mkdir("/mnt/runtime/default/self", 0755);
++    chown("/mnt/runtime/default/self", 0, 0);
++    mkdir("/mnt/runtime/read", 0755);
++    chown("/mnt/runtime/read", 0, 0);
++    mkdir("/mnt/runtime/read/self", 0755);
++    chown("/mnt/runtime/read/self", 0, 0);
++    mkdir("/mnt/runtime/write", 0755);
++    chown("/mnt/runtime/write", 0, 0);
++    mkdir("/mnt/runtime/write/self", 0755);
++    chown("/mnt/runtime/write/self", 0, 0);
++    symlink("/storage/self/primary", "/sdcard");
++    symlink("/mnt/user/0/primary", "/mnt/runtime/default/self/primary");
++    mount("/mnt/runtime/default", "/storage", "none", MS_BIND | MS_REC | MS_SLAVE, "");
++    symlink("/sdcard", "/mnt/sdcard");
++    symlink("/sdcard", "/storage/sdcard0");
++    mount("rootfs", "/", "rootfs", MS_REMOUNT | MS_RDONLY, "");
++    // For security
++    umask(066);
++
+     mkdir("/dev/block/vold", 0755);
+ 
+     /* For when cryptfs checks and mounts an encrypted filesystem */
+@@ -158,6 +252,11 @@ static void parse_args(int argc, char** argv) {
+         }
+     }
+ 
++    android::vold::sBlkidContext = strdup("u:r:vold:s0");
++    android::vold::sBlkidUntrustedContext = strdup("u:r:vold:s0");
++    android::vold::sFsckContext = strdup("u:r:vold:s0");
++    android::vold::sFsckUntrustedContext = strdup("u:r:vold:s0");
++
+     CHECK(android::vold::sBlkidContext != nullptr);
+     CHECK(android::vold::sBlkidUntrustedContext != nullptr);
+     CHECK(android::vold::sFsckContext != nullptr);
