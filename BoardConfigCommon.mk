@@ -54,36 +54,44 @@ TARGET_KERNEL_SOURCE := kernel/meizu/mx4pro
 BOARD_HAS_LARGE_FILESYSTEM := true
 TARGET_USERIMAGES_USE_EXT4 := true
 
-### CAMERA
-USE_CAMERA_STUB := true
-# frameworks/av/services/camera/libcameraservice
-BOARD_NEEDS_MEMORYHEAPION := true
-# frameworks/av/camera, camera blob support
-COMMON_GLOBAL_CFLAGS += -DSAMSUNG_CAMERA_HARDWARE
+# Extended filesystem support
+TARGET_KERNEL_HAVE_EXFAT := true
+TARGET_KERNEL_HAVE_NTFS := true
 
-BOARD_BACK_CAMERA_ROTATION := 0
-BOARD_FRONT_CAMERA_ROTATION := 0
-BOARD_BACK_CAMERA_SENSOR := SENSOR_NAME_IMX220
-BOARD_FRONT_CAMERA_SENSOR := SENSOR_NAME_OV5693
+# Camera
+BOARD_USE_SAMSUNG_CAMERAFORMAT_NV21 := true
 
 # Graphics
 USE_OPENGL_RENDERER := true
 
+# Shader cache config options
+# Maximum size of the  GLES Shaders that can be cached for reuse.
+# Increase the size if shaders of size greater than 12KB are used.
+MAX_EGL_CACHE_KEY_SIZE := 12*1024
+
+# Maximum GLES shader cache size for each app to store the compiled shader
+# binaries. Decrease the size if RAM or Flash Storage size is a limitation
+# of the device.
+MAX_EGL_CACHE_SIZE := 2048*1024
 # frameworks/native/services/surfaceflinger
 # Android keeps 2 surface buffers at all time in case the hwcomposer
 # misses the time to swap buffers (in cases where it takes 16ms or
 # less). Use 3 to avoid timing issues.
 NUM_FRAMEBUFFER_SURFACE_BUFFERS := 3
 
-# Exynos display
-BOARD_USES_VIRTUAL_DISPLAY := true
+# Mixer
+BOARD_USE_BGRA_8888 := true
 
 # HWCServices
 BOARD_USES_HWC_SERVICES := true
 
+# Virtual Display
+BOARD_USES_VIRTUAL_DISPLAY := true
+
 # HDMI
-BOARD_USES_NEW_HDMI := true
+TARGET_LINUX_KERNEL_VERSION := 3.10
 BOARD_USES_GSC_VIDEO := true
+BOARD_USES_CEC := true
 
 # FIMG2D
 BOARD_USES_SKIA_FIMGAPI := true
@@ -108,18 +116,12 @@ BOARD_USE_METADATABUFFERTYPE := true
 BOARD_USE_DMA_BUF := true
 BOARD_USE_ANB_OUTBUF_SHARE := true
 BOARD_USE_IMPROVED_BUFFER := true
-
-# HEVC support in libvideocodec
-BOARD_USE_HEVC_HWIP := true
-
 BOARD_USE_NON_CACHED_GRAPHICBUFFER := true
 BOARD_USE_GSC_RGB_ENCODER := true
-BOARD_USE_ENCODER_RGBINPUT_SUPPORT := true
-BOARD_USE_CSC_HW := true
+BOARD_USE_CSC_HW := false
 BOARD_USE_QOS_CTRL := false
 BOARD_USE_S3D_SUPPORT := true
 BOARD_USE_VP8ENC_SUPPORT := true
-BOARD_USE_HEVCDEC_SUPPORT := true
 
 # Include path
 TARGET_SPECIFIC_HEADER_PATH := $(LOCAL_PATH)/include
@@ -149,9 +151,6 @@ ENABLE_WEBGL := true
 
 # WFD
 BOARD_USES_WFD := true
-
-### FONTS
-EXTENDED_FONT_FOOTPRINT := true
 
 ### TWRP RECOVERY
 RECOVERY_VARIANT := twrp
